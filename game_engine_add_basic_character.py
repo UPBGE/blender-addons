@@ -19,7 +19,7 @@ bl_info = {
     "location": "View3D > TOOLS",
     "warning": "WIP - Frequent changes for known issues and enhancements",
     "support": "TESTING",
-    "wiki_url": "",
+    "wiki_url": "https://github.com/UPBGE/blender-addons/wiki/Basic-Character-addon",
     "tracker_url": "",
     "category": "Game Engine"
 }
