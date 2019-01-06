@@ -80,7 +80,7 @@ def WriteAppleRuntime(player_path, output_path, copy_python, overwrite_lib):
     # Python doesn't need to be copied for OS X since it's already inside blenderplayer.app
 
 
-def WriteRuntime(player_path, output_path, copy_python, overwrite_lib, copy_dlls, report=print):
+def WriteRuntime(player_path, output_path, copy_python, overwrite_lib, copy_dlls, copy_scripts, copy_datafiles, report=print):
     import struct
 
     # Check the paths
@@ -156,14 +156,31 @@ def WriteRuntime(player_path, output_path, copy_python, overwrite_lib, copy_dlls
         CopyPythonLibs(dst, overwrite_lib, report)
         print("done")
 
-    # And DLLs
+    # Copy DLLs
     if copy_dlls:
         print("Copying DLLs...", end=" ")
         for file in [i for i in os.listdir(blender_dir) if i.lower().endswith('.dll')]:
             src = os.path.join(blender_dir, file)
             dst = os.path.join(runtime_dir, file)
             shutil.copy2(src, dst)
+        print("done")
 
+    # Copy Scripts folder
+    if copy_scripts:
+        print("Copying scripts...", end=" ")
+        scripts_folder = os.path.join(bpy.app.version_string.split()[0], "scripts")
+        src = os.path.join(blender_dir, scripts_folder)
+        dst = os.path.join(runtime_dir, scripts_folder)
+        shutil.copytree(src, dst)
+        print("done")
+
+    # And copy datafiles folder
+    if copy_datafiles:
+        print("Copying datafiles...", end=" ")
+        datafiles_folder = os.path.join(bpy.app.version_string.split()[0], "datafiles", "gamecontroller")
+        src = os.path.join(blender_dir, datafiles_folder)
+        dst = os.path.join(runtime_dir, datafiles_folder)
+        shutil.copytree(src, dst)
         print("done")
 
 from bpy.props import *
@@ -203,6 +220,16 @@ class SaveAsRuntime(bpy.types.Operator):
             description="Overwrites the lib folder (if one exists) with the bundled Python lib folder",
             default=False,
             )
+    copy_scripts = BoolProperty(
+            name="Copy Scripts folder",
+            description="Copy bundle Scripts folder with the runtime",
+            default=False,
+            )
+    copy_datafiles = BoolProperty(
+            name="Copy Datafiles folder",
+            description="Copy bundle datafiles folder with the runtime",
+            default=True,
+            )
 
     # Only Windows has dlls to copy
     if ext == '.exe':
@@ -223,6 +250,8 @@ class SaveAsRuntime(bpy.types.Operator):
                      self.copy_python,
                      self.overwrite_lib,
                      self.copy_dlls,
+                     self.copy_scripts,
+                     self.copy_datafiles,
                      self.report,
                      )
         print("Finished in %.4fs" % (time.clock()-start_time))
