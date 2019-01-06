@@ -157,7 +157,7 @@ class FenceGenerator():
     def param_t(self, angle_limit, post_spacing):
         """
             setup corners and fences dz
-            compute index of fences wich belong to each group of fences between corners
+            compute index of fences which belong to each group of fences between corners
             compute t of each fence
         """
         # segments are group of parts separated by limit angle
@@ -1489,7 +1489,7 @@ class ARCHIPACK_PT_fence(Panel):
         row = box.row(align=True)
         row.operator("archipack.fence_curve_update", text="", icon='FILE_REFRESH')
         row.prop_search(prop, "user_defined_path", scene, "objects", text="", icon='OUTLINER_OB_CURVE')
-        if prop.user_defined_path is not "":
+        if prop.user_defined_path != "":
             box.prop(prop, 'user_defined_spline')
             box.prop(prop, 'user_defined_resolution')
         box.prop(prop, 'angle_limit')

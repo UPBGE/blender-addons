@@ -831,9 +831,9 @@ def draw_text(myobj, pos2d, display_text, rgb, fsize, align='L', text_rot=0.0):
     # -------------------
     for line in mylines:
         text_width, text_height = blf.dimensions(font_id, line)
-        if align is 'C':
+        if align == 'C':
             newx = x_pos - text_width / 2
-        elif align is 'R':
+        elif align == 'R':
             newx = x_pos - text_width - gap
         else:
             newx = x_pos
@@ -851,7 +851,7 @@ def draw_text(myobj, pos2d, display_text, rgb, fsize, align='L', text_rot=0.0):
         if maxwidth < text_width:
             maxwidth = text_width
 
-    if align is 'L':
+    if align == 'L':
         blf.disable(font_id, ROTATION)
 
     return maxwidth, maxheight
@@ -1431,7 +1431,7 @@ def format_distance(fmt, units, value, factor=1):
         d_cm = value * (100 ** factor)
         tx_dist = fmt % d_cm
     # ------------------------
-    # Units milimiters
+    # Units millimeters
     # ------------------------
     elif units == "4":
         if hide_units is False:

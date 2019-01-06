@@ -36,16 +36,16 @@ import os
 import time
 import bpy
 import mathutils
+
 from bpy_extras.io_utils import unpack_list
 from bpy_extras.image_utils import load_image
-
-from progress_report import ProgressReport, ProgressReportSubstep
+from bpy_extras.wm_utils.progress_report import ProgressReport
 
 
 def line_value(line_split):
     """
     Returns 1 string representing the value for this line
-    None will be returned if theres only 1 word
+    None will be returned if there's only 1 word
     """
     length = len(line_split)
     if length == 1:
@@ -177,7 +177,7 @@ def create_materials(filepath, relpath,
 
         elif type == 'Bump':
             bump_mult = map_options.get(b'-bm')
-            bump_mult = float(bump_mult[0]) if (bump_mult is not None and len(bump_mult) > 1) else 1.0
+            bump_mult = float(bump_mult[0]) if (bump_mult and len(bump_mult[0]) > 1) else 1.0
 
             if use_cycles:
                 mat_wrap.normal_image_set(image)
@@ -426,7 +426,7 @@ def create_materials(filepath, relpath,
                         # rgb, filter color, blender has no support for this.
                         pass
                     elif line_id == b'illum':
-                        illum = int(line_split[1])
+                        illum = get_int(line_split[1])
 
                         # inline comments are from the spec, v4.2
                         if illum == 0:
@@ -616,7 +616,7 @@ def create_mesh(new_objects,
         smooth_group_users = {context_smooth_group: {} for context_smooth_group in unique_smooth_groups.keys()}
         context_smooth_group_old = -1
 
-    fgon_edges = set()  # Used for storing fgon keys when we need to tesselate/untesselate them (ngons with hole).
+    fgon_edges = set()  # Used for storing fgon keys when we need to tessellate/untessellate them (ngons with hole).
     edges = []
     tot_loops = 0
 
@@ -710,7 +710,7 @@ def create_mesh(new_objects,
     if unique_smooth_groups:
         for edge_dict in smooth_group_users.values():
             for key, users in edge_dict.items():
-                if users == 1:  # This edge is on the boundry of a group
+                if users == 1:  # This edge is on the boundary of a group
                     sharp_edges.add(key)
 
     # map the material names to an index
@@ -955,6 +955,12 @@ def get_float_func(filepath):
     file.close()
     # in case all vert values were ints
     return float
+
+
+def get_int(svalue):
+    if b',' in svalue:
+        return int(float(svalue.replace(b',', b'.')))
+    return int(float(svalue))
 
 
 def load(context,
@@ -1250,7 +1256,7 @@ def load(context,
                     context_nurbs = {}
                     context_parm = b''
 
-                ''' # How to use usemap? depricated?
+                ''' # How to use usemap? deprecated?
                 elif line_start == b'usema': # usemap or usemat
                     context_image= line_value(line_split)
                 '''
