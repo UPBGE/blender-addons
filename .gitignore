@@ -10,6 +10,14 @@ __pycache__/
 *.swp
 *.swo
 *#
+*.cflags
+*.config
+*.cxxflags
+*.files
+*.includes
+*.user
+*.creator
+*.creator.user
 
 # ms-windows
 Thumbs.db
