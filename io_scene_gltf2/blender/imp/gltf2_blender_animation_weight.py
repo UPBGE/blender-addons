@@ -16,27 +16,13 @@ import json
 import bpy
 
 from ...io.imp.gltf2_io_binary import BinaryData
-from .gltf2_blender_animation_utils import simulate_stash
+from .gltf2_blender_animation_utils import simulate_stash, make_fcurve
 
 
 class BlenderWeightAnim():
     """Blender ShapeKey Animation."""
     def __new__(cls, *args, **kwargs):
         raise RuntimeError("%s should not be instantiated" % cls)
-
-    @staticmethod
-    def set_interpolation(interpolation, kf):
-        """Manage interpolation."""
-        if interpolation == "LINEAR":
-            kf.interpolation = 'LINEAR'
-        elif interpolation == "STEP":
-            kf.interpolation = 'CONSTANT'
-        elif interpolation == "CUBICSPLINE":
-            kf.interpolation = 'BEZIER'
-            kf.handle_right_type = 'AUTO'
-            kf.handle_left_type = 'AUTO'
-        else:
-            kf.interpolation = 'LINEAR'
 
     @staticmethod
     def anim(gltf, anim_idx, node_idx):
@@ -70,11 +56,8 @@ class BlenderWeightAnim():
         values = BinaryData.get_data_from_accessor(gltf, animation.samplers[channel.sampler].output)
 
         # retrieve number of targets
-        nb_targets = 0
-        for prim in gltf.data.meshes[gltf.data.nodes[node_idx].mesh].primitives:
-            if prim.targets:
-                if len(prim.targets) > nb_targets:
-                    nb_targets = len(prim.targets)
+        pymesh = gltf.data.meshes[gltf.data.nodes[node_idx].mesh]
+        nb_targets = len(pymesh.shapekey_names)
 
         if animation.samplers[channel.sampler].interpolation == "CUBICSPLINE":
             offset = nb_targets
@@ -86,24 +69,17 @@ class BlenderWeightAnim():
         coords = [0] * (2 * len(keys))
         coords[::2] = (key[0] * fps for key in keys)
 
-        group_name = "ShapeKeys"
-        if group_name not in action.groups:
-            action.groups.new(group_name)
-        group = action.groups[group_name]
-
         for sk in range(nb_targets):
-            if gltf.shapekeys[sk] is not None: # Do not animate shapekeys not created
-                kb_name = obj.data.shape_keys.key_blocks[gltf.shapekeys[sk]].name
-                data_path = "key_blocks[" + json.dumps(kb_name) + "].value"
-                fcurve = action.fcurves.new(data_path=data_path)
-                fcurve.group = group
-
-                fcurve.keyframe_points.add(len(keys))
+            if pymesh.shapekey_names[sk] is not None: # Do not animate shapekeys not created
                 coords[1::2] = (values[offset + stride * i + sk][0] for i in range(len(keys)))
-                fcurve.keyframe_points.foreach_set('co', coords)
+                kb_name = pymesh.shapekey_names[sk]
+                data_path = "key_blocks[" + json.dumps(kb_name) + "].value"
 
-                # Setting interpolation
-                for kf in fcurve.keyframe_points:
-                    BlenderWeightAnim.set_interpolation(animation.samplers[channel.sampler].interpolation, kf)
-                fcurve.update() # force updating tangents (this may change when tangent will be managed)
+                make_fcurve(
+                    action,
+                    coords,
+                    data_path=data_path,
+                    group_name="ShapeKeys",
+                    interpolation=animation.samplers[channel.sampler].interpolation,
+                )
 

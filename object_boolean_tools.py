@@ -79,6 +79,20 @@ def isBrush(_obj):
 #         return False
 
 
+def cycles_visibility_set(ob, value=False):
+    if not hasattr(ob, "cycles_visibility"):
+        return
+
+    vis = ob.cycles_visibility
+
+    vis.camera = value
+    vis.diffuse = value
+    vis.glossy = value
+    vis.shadow = value
+    vis.transmission = value
+    vis.scatter = value
+
+
 def BT_ObjectByName(obj):
     for ob in bpy.context.view_layer.objects:
         if isCanvas(ob) or isBrush(ob):
@@ -126,18 +140,13 @@ def Operation(context, _operation):
                 ConvertToMesh(selObj)
             actObj = context.active_object
             selObj.hide_render = True
-            cyclesVis = selObj.cycles_visibility
 
             if useWire:
                 selObj.display_type = "WIRE"
             else:
                 selObj.display_type = "BOUNDS"
 
-            cyclesVis.camera = False
-            cyclesVis.diffuse = False
-            cyclesVis.glossy = False
-            cyclesVis.shadow = False
-            cyclesVis.transmission = False
+            cycles_visibility_set(selObj, value=False)
 
             if _operation == "SLICE":
                 # copies instance_collection property(empty), but group property is empty (users_group = None)
@@ -168,7 +177,7 @@ def Operation(context, _operation):
             selObj["BoolTool_FTransform"] = "False"
 
 
-# Remove Obejcts form the BoolTool System
+# Remove Objects form the BoolTool System
 def Remove(context, thisObj_name, Prop):
     # Find the Brush pointed in the Tree View and Restore it, active is the Canvas
     actObj = context.active_object
@@ -178,15 +187,10 @@ def Remove(context, thisObj_name, Prop):
         for obj in bpy.context.view_layer.objects:
             # if it's the brush object
             if obj.name == _thisObj_name:
-                cyclesVis = obj.cycles_visibility
                 obj.display_type = "TEXTURED"
                 del obj["BoolToolBrush"]
                 del obj["BoolTool_FTransform"]
-                cyclesVis.camera = True
-                cyclesVis.diffuse = True
-                cyclesVis.glossy = True
-                cyclesVis.shadow = True
-                cyclesVis.transmission = True
+                cycles_visibility_set(obj, value=True)
 
                 # Remove it from the Canvas
                 for mod in actObj.modifiers:
@@ -202,20 +206,16 @@ def Remove(context, thisObj_name, Prop):
         # Remove the Brush Property
         if Prop == "BRUSH":
             Canvas = FindCanvas(actObj)
+
             if Canvas:
                 for mod in Canvas.modifiers:
-                    if "BTool_" in mod.name:
-                        if actObj.name in mod.name:
-                            Canvas.modifiers.remove(mod)
-            cyclesVis = actObj.cycles_visibility
+                    if "BTool_" in mod.name and actObj.name in mod.name:
+                        Canvas.modifiers.remove(mod)
+
             actObj.display_type = "TEXTURED"
             del actObj["BoolToolBrush"]
             del actObj["BoolTool_FTransform"]
-            cyclesVis.camera = True
-            cyclesVis.diffuse = True
-            cyclesVis.glossy = True
-            cyclesVis.shadow = True
-            cyclesVis.transmission = True
+            cycles_visibility_set(actObj, value=True)
 
         if Prop == "CANVAS":
             for mod in actObj.modifiers:
@@ -866,18 +866,14 @@ class VIEW3D_PT_booltool_tools(Panel):
     bl_space_type = "VIEW_3D"
     bl_region_type = "UI"
     bl_context = "objectmode"
+    bl_options = {'DEFAULT_CLOSED'}
 
     @classmethod
     def poll(cls, context):
         return context.active_object is not None
 
-    def draw_header(self, context):
-        layout = self.layout
-        layout.operator("wm.booltool_help", text="", icon="QUESTION")
-
     def draw(self, context):
         layout = self.layout
-        obj = context.active_object
 
         col = layout.column(align=True)
         col.label(text="Auto Boolean")
@@ -916,7 +912,7 @@ class VIEW3D_PT_booltool_config(Panel):
     @classmethod
     def poll(cls, context):
         actObj = context.active_object
-        return isCanvas(actObj) or isBrush(actObj) #  or isPolyBrush(actObj)
+        return isCanvas(actObj) or isBrush(actObj)  # or isPolyBrush(actObj)
 
     def draw(self, context):
         layout = self.layout
@@ -1045,39 +1041,6 @@ class VIEW3D_PT_booltool_bviewer(Panel):
                 Dw.direction = "DOWN"
 
 
-# ------------------ BOOL TOOL Help ----------------------------
-
-
-class WM_OT_BoolTool_Help(Operator):
-    bl_idname = "wm.booltool_help"
-    bl_label = "Bool Tool Help"
-    bl_description = "Help - click to read basic information"
-
-    def draw(self, context):
-        layout = self.layout
-
-        layout.label(text="To use:")
-        layout.label(text="Select two or more objects,")
-        layout.label(text="choose one option from the panel")
-        layout.label(text="or from the Ctrl + Shift + B menu")
-
-        layout.separator()
-
-        layout.label(text="Auto Boolean:")
-        layout.label(text="Apply Boolean operation directly to mesh.")
-
-        layout.separator()
-
-        layout.label(text="Brush Boolean:")
-        layout.label(text="Create a Boolean brush modifier setup.")
-
-    def execute(self, context):
-        return {"FINISHED"}
-
-    def invoke(self, context, event):
-        return context.window_manager.invoke_popup(self, width=220)
-
-
 # ------------------ BOOL TOOL ADD-ON PREFERENCES ----------------------------
 
 
@@ -1165,7 +1128,6 @@ class PREFS_BoolTool_Props(AddonPreferences):
         layout.use_property_split = True
         layout.use_property_decorate = False
 
-
         col = layout.column()
         col.prop(self, "category")
         col.prop(self, "fast_transform")
@@ -1218,7 +1180,6 @@ classes = (
     BTool_EnableThisBrush,
     BTool_EnableFTransform,
     BTool_FastTransform,
-    WM_OT_BoolTool_Help,
 )
 
 

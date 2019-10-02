@@ -27,7 +27,7 @@ bl_info = {
     "author": "Mackraken",
     "version": (0, 3, 3),
     "blender": (2, 80, 0),
-    "location": "View3D > Tool Shelf > Addons Tab",
+    "location": "View3D > Tool Shelf > Edit Tab",
     "warning": "WIP",
     "wiki_url": "https://wiki.blender.org/index.php/Extensions:2.6/Py/"
                 "Scripts/Curve/Curve_Tools",
@@ -231,14 +231,14 @@ class curvetoolsSettings(PropertyGroup):
             )
     font_thickness: IntProperty(
             name="Font thickness",
-            default=1,
+            default=2,
             min=1, max=1024,
             soft_min=2,
             description="Font thickness (px)"
             )
     font_size: FloatProperty(
             name="Font size",
-            default=0.5,
+            default=0.1,
             precision=3,
             description="Font size"
             )
@@ -249,7 +249,7 @@ class VIEW3D_PT_CurvePanel(Panel):
     bl_space_type = "VIEW_3D"
     bl_region_type = "UI"
     bl_options = {'DEFAULT_CLOSED'}
-    bl_category = "Tools"
+    bl_category = "Edit"
 
     @classmethod
     def poll(cls, context):
@@ -375,6 +375,8 @@ class VIEW3D_PT_CurvePanel(Panel):
             row = col.row(align=True)
             row.operator("curve.bezier_cad_subdivide", text="Multi Subdivide")
             row = col.row(align=True)
+            row.operator("curvetools.split", text='Split by selected points')            
+            row = col.row(align=True)
             row.operator("curve.add_toolpath_discretize_curve", text="Discretize Curve")
             row = col.row(align=True)
             row.operator("curve.bezier_cad_array", text="Array selected spline")
@@ -449,6 +451,8 @@ class VIEW3D_PT_CurvePanel(Panel):
             row = col.row(align=True)
             row.label(text="Alt + mouse click - select spline")
             row = col.row(align=True)
+            row.label(text="Alt + Shift + mouse click - add spline to select")
+            row = col.row(align=True)
             row.label(text="A - deselect all")
             
 
@@ -484,7 +488,7 @@ class CurveAddonPreferences(AddonPreferences):
     category: StringProperty(
             name="Tab Category",
             description="Choose a name for the category of the panel",
-            default="CurveTools",
+            default="Edit",
             update=update_panel
             )
 
