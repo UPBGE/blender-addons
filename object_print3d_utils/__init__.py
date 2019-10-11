@@ -19,7 +19,7 @@
 # <pep8 compliant>
 
 bl_info = {
-    "name": "3D Print Toolbox",
+    "name": "3D-Print Toolbox",
     "author": "Campbell Barton",
     "blender": (2, 80, 0),
     "location": "3D View > Sidebar",
@@ -128,8 +128,9 @@ class SceneProperties(PropertyGroup):
 classes = (
     SceneProperties,
 
-    ui.VIEW3D_PT_print3d,
+    ui.VIEW3D_PT_print3d_analyze,
     ui.VIEW3D_PT_print3d_cleanup,
+    ui.VIEW3D_PT_print3d_transform,
     ui.VIEW3D_PT_print3d_export,
 
     operators.MESH_OT_print3d_info_volume,
@@ -142,7 +143,6 @@ classes = (
     operators.MESH_OT_print3d_check_sharp,
     operators.MESH_OT_print3d_check_overhang,
     operators.MESH_OT_print3d_check_all,
-    operators.MESH_OT_print3d_clean_isolated,
     operators.MESH_OT_print3d_clean_distorted,
     # operators.MESH_OT_print3d_clean_thin,
     operators.MESH_OT_print3d_clean_non_manifold,
