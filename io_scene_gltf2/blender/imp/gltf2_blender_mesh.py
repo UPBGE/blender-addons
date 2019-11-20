@@ -16,6 +16,7 @@ import bpy
 import bmesh
 from mathutils import Vector
 
+from ..com.gltf2_blender_extras import set_extras
 from .gltf2_blender_material import BlenderMaterial
 from .gltf2_blender_primitive import BlenderPrimitive
 from ...io.imp.gltf2_io_binary import BinaryData
@@ -42,8 +43,6 @@ class BlenderMesh():
 
         # Process all primitives
         for prim in pymesh.primitives:
-            prim.blender_texcoord = {}
-
             if prim.material is None:
                 material_idx = None
             else:
@@ -75,6 +74,8 @@ class BlenderMesh():
             mesh.materials.append(bpy.data.materials[name_material])
         mesh.update()
 
+        set_extras(mesh, pymesh.extras, exclude=['targetNames'])
+
         pymesh.blender_name = mesh.name
 
         # Clear accessor cache after all primitives are done
@@ -85,13 +86,6 @@ class BlenderMesh():
     @staticmethod
     def set_mesh(gltf, pymesh, mesh, obj):
         """Sets mesh data after creation."""
-        # Object and UV are now created, we can set UVMap into material
-        for prim in pymesh.primitives:
-            vertex_color = None
-            if 'COLOR_0' in prim.attributes.keys():
-                vertex_color = 'COLOR_0'
-            BlenderPrimitive.set_UV_in_mat(gltf, prim, obj, vertex_color)
-
         # set default weights for shape keys, and names, if not set by convention on extras data
         if pymesh.weights is not None:
             for i in range(len(pymesh.weights)):

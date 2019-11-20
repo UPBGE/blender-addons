@@ -25,7 +25,7 @@ from io_scene_gltf2.blender.exp import gltf2_blender_gather_mesh
 from io_scene_gltf2.blender.exp import gltf2_blender_gather_joints
 from io_scene_gltf2.blender.exp import gltf2_blender_extract
 from io_scene_gltf2.blender.exp import gltf2_blender_gather_lights
-from io_scene_gltf2.blender.exp import gltf2_blender_generate_extras
+from ..com.gltf2_blender_extras import generate_extras
 from io_scene_gltf2.io.com import gltf2_io
 from io_scene_gltf2.io.com import gltf2_io_extensions
 
@@ -135,7 +135,12 @@ def __gather_children(blender_object, blender_scene, export_settings):
     # blender bones
     if blender_object.type == "ARMATURE":
         root_joints = []
-        for blender_bone in blender_object.pose.bones:
+        if export_settings["gltf_def_bones"] is False:
+            bones = blender_object.pose.bones
+        else:
+            bones, _, _ = gltf2_blender_gather_skins.get_bone_tree(None, blender_object)
+            bones = [blender_object.pose.bones[b.name] for b in bones]
+        for blender_bone in bones:
             if not blender_bone.parent:
                 joint = gltf2_blender_gather_joints.gather_joint(blender_bone, export_settings)
                 children.append(joint)
@@ -214,7 +219,7 @@ def __gather_extensions(blender_object, export_settings):
 
 def __gather_extras(blender_object, export_settings):
     if export_settings['gltf_extras']:
-        return gltf2_blender_generate_extras.generate_extras(blender_object)
+        return generate_extras(blender_object)
     return None
 
 
@@ -243,11 +248,12 @@ def __gather_mesh(blender_object, export_settings):
     if export_settings[gltf2_blender_export_keys.APPLY]:
         auto_smooth = blender_object.data.use_auto_smooth
         edge_split = None
-        if auto_smooth:
+        some_normals_modifier = any([m in modifier_normal_types for m in [mod.type for mod in blender_object.modifiers]])
+        if auto_smooth and not some_normals_modifier:
             edge_split = blender_object.modifiers.new('Temporary_Auto_Smooth', 'EDGE_SPLIT')
             edge_split.split_angle = blender_object.data.auto_smooth_angle
             edge_split.use_edge_angle = not blender_object.data.has_custom_normals
-            blender_object.data.use_auto_smooth = any([m in modifier_normal_types for m in [mod.type for mod in blender_object.modifiers]])
+            blender_object.data.use_auto_smooth = some_normals_modifier
             bpy.context.view_layer.update()
 
         armature_modifiers = {}
@@ -270,7 +276,7 @@ def __gather_mesh(blender_object, export_settings):
             for idx, show_viewport in armature_modifiers.items():
                 blender_object.modifiers[idx].show_viewport = show_viewport
 
-        if auto_smooth:
+        if auto_smooth and not some_normals_modifier:
             blender_object.data.use_auto_smooth = True
             blender_object.modifiers.remove(edge_split)
     else:

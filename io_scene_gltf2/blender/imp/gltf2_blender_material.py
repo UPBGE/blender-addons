@@ -13,6 +13,8 @@
 # limitations under the License.
 
 import bpy
+
+from ..com.gltf2_blender_extras import set_extras
 from .gltf2_blender_pbrMetallicRoughness import BlenderPbr
 from .gltf2_blender_KHR_materials_pbrSpecularGlossiness import BlenderKHR_materials_pbrSpecularGlossiness
 from .gltf2_blender_KHR_materials_unlit import BlenderKHR_materials_unlit
@@ -48,6 +50,8 @@ class BlenderMaterial():
 
         mat = bpy.data.materials.new(name)
         pymaterial.blender_material[vertex_color] = mat.name
+
+        set_extras(mat, pymaterial.extras)
 
         mat.use_backface_culling = (pymaterial.double_sided != True)
 
@@ -100,17 +104,6 @@ class BlenderMaterial():
 
         if pymaterial.alpha_mode is not None and pymaterial.alpha_mode != 'OPAQUE':
             BlenderMaterial.blender_alpha(gltf, material_idx, vertex_color, pymaterial.alpha_mode)
-
-    @staticmethod
-    def set_uvmap(gltf, material_idx, prim, obj, vertex_color):
-        """Set UV Map."""
-        pymaterial = gltf.data.materials[material_idx]
-
-        node_tree = bpy.data.materials[pymaterial.blender_material[vertex_color]].node_tree
-        uvmap_nodes = [node for node in node_tree.nodes if node.type in ['UVMAP', 'NORMAL_MAP']]
-        for uvmap_node in uvmap_nodes:
-            if uvmap_node["gltf2_texcoord"] in prim.blender_texcoord.keys():
-                uvmap_node.uv_map = prim.blender_texcoord[uvmap_node["gltf2_texcoord"]]
 
     @staticmethod
     def blender_alpha(gltf, material_idx, vertex_color, alpha_mode):
