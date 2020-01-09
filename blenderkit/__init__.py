@@ -244,6 +244,26 @@ def switch_search_results(self, context):
         s['search results orig'] = s.get('bkit brush search orig')
     search.load_previews()
 
+def asset_type_callback(self, context):
+    #s = bpy.context.scene
+    #ui_props = s.blenderkitUI
+    if self.down_up == 'SEARCH':
+        items = (
+            ('MODEL', 'Search Models', 'Browse models', 'OBJECT_DATAMODE', 0),
+            # ('SCENE', 'SCENE', 'Browse scenes', 'SCENE_DATA', 1),
+            ('MATERIAL', 'Search Materials', 'Browse materials', 'MATERIAL', 2),
+            # ('TEXTURE', 'Texture', 'Browse textures', 'TEXTURE', 3),
+            ('BRUSH', 'Search Brushes', 'Browse brushes', 'BRUSH_DATA', 3)
+        )
+    else:
+        items = (
+            ('MODEL', 'Upload Model', 'Browse models', 'OBJECT_DATAMODE', 0),
+            # ('SCENE', 'SCENE', 'Browse scenes', 'SCENE_DATA', 1),
+            ('MATERIAL', 'Uplaod Material', 'Browse materials', 'MATERIAL', 2),
+            # ('TEXTURE', 'Texture', 'Browse textures', 'TEXTURE', 3),
+            ('BRUSH', 'Upload Brush', 'Browse brushes', 'BRUSH_DATA', 3)
+        )
+    return items
 
 class BlenderKitUIProps(PropertyGroup):
     down_up: EnumProperty(
@@ -257,16 +277,10 @@ class BlenderKitUIProps(PropertyGroup):
         default="SEARCH",
     )
     asset_type: EnumProperty(
-        name="Active Asset Type",
-        items=(
-            ('MODEL', 'Model', 'Browse models', 'OBJECT_DATAMODE', 0),
-            # ('SCENE', 'SCENE', 'Browse scenes', 'SCENE_DATA', 1),
-            ('MATERIAL', 'Material', 'Browse models', 'MATERIAL', 2),
-            # ('TEXTURE', 'Texture', 'Browse textures', 'TEXTURE', 3),
-            ('BRUSH', 'Brush', 'Browse brushes', 'BRUSH_DATA', 3)
-        ),
+        name="BlenderKit Active Asset Type",
+        items=asset_type_callback,
         description="Activate asset in UI",
-        default="MATERIAL",
+        default=None,
         update=switch_search_results
     )
     # these aren't actually used ( by now, seems to better use globals in UI module:
@@ -489,6 +503,14 @@ class BlenderKitCommonUploadProps(object):
         default="PUBLIC",
     )
 
+    is_procedural: BoolProperty(name="Procedural",
+                          description="Asset is procedural - has no texture.",
+                          default=True
+                          )
+    node_count: IntProperty(name="Node count", description="Total nodes in the asset", default=0)
+    texture_count: IntProperty(name="Node count", description="Total nodes in the asset", default=0)
+    total_megapixels: IntProperty(name="Node count", description="Total nodes in the asset", default=0)
+
     # is_private: BoolProperty(name="Asset is Private",
     #                       description="If not marked private, your asset will go into the validation process automatically\n"
     #                                   "Private assets are limited by quota.",
@@ -621,6 +643,7 @@ class BlenderKitMaterialUploadProps(PropertyGroup, BlenderKitCommonUploadProps):
         description="shaders used in asset, autofilled",
         default="",
     )
+
     is_free: BoolProperty(name="Free for Everyone",
                           description="You consent you want to release this asset as free for everyone",
                           default=True, update=update_free
@@ -1324,6 +1347,12 @@ class BlenderKitAddonPreferences(AddonPreferences):
         default=False
     )
 
+    show_on_start: BoolProperty(
+        name="Show assetbar when starting blender",
+        description="Show assetbar when starting blender",
+        default=False
+    )
+
     global_dir: StringProperty(
         name="Global Files Directory",
         description="Global storage for your assets, will use subdirectories for the contents",
@@ -1404,6 +1433,7 @@ class BlenderKitAddonPreferences(AddonPreferences):
 
     def draw(self, context):
         layout = self.layout
+        layout.prop(self, "show_on_start")
 
         if self.api_key.strip() == '':
             if self.enable_oauth:
