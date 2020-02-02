@@ -26,3 +26,6 @@ Desktop.ini
 
 # external addons
 cycles/
+
+# update tools
+update_addons.sh
