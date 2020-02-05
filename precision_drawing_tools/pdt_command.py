@@ -62,6 +62,7 @@ from .pdt_msg_strings import (
     PDT_ERR_SEL_4_VERTS,
     PDT_ERR_INT_LINES,
     PDT_LAB_PLANE,
+    PDT_ERR_NO_ACT_OBJ,
 )
 from .pdt_bix import add_line_to_bisection
 from .pdt_etof import extend_vertex
@@ -74,6 +75,7 @@ PDT_CommandFailure = pdt_exception.CommandFailure
 PDT_ObjectModeError = pdt_exception.ObjectModeError
 PDT_MathsError = pdt_exception.MathsError
 PDT_IntersectionError = pdt_exception.IntersectionError
+PDT_NoObjectError = pdt_exception.NoObjectError
 
 
 class PDT_OT_CommandReRun(Operator):
@@ -99,9 +101,6 @@ class PDT_OT_CommandReRun(Operator):
 def command_run(self, context):
     """Run Command String as input into Command Line.
 
-    Args:
-        context: Blender bpy.context instance.
-
     Note:
         Uses pg.command, pg.error & many other 'pg.' variables to set PDT menu items,
         or alter functions
@@ -124,7 +123,7 @@ def command_run(self, context):
 
             A = Absolute XYZ, D = Delta XYZ, I = Distance at Angle, P = Percent
             X = X Delta, Y = Y, Delta Z, = Z Delta, O = Output (Maths Operation only)
-            V = Vertex Bevel, E = Edge Bevel
+            V = Vertex Bevel, E = Edge Bevel, I = Intersect then Bevel
 
             Capitals and lower case letters are both allowed
 
@@ -134,10 +133,13 @@ def command_run(self, context):
 
             Example; CA,,3 - Cursor to Absolute, is re-interpreted as CA0,0,3
 
-            Exception for Maths Operation, Values section is evaluated as Maths command
+            Exception for Maths Operation, Values section is evaluated as Maths expression
 
             Example; madegrees(atan(3/4)) - sets PDT Angle to smallest angle of 3,4,5 Triangle;
             (36.8699 degrees)
+
+    Args:
+        context: Blender bpy.context instance.
 
     Returns:
         Nothing.
@@ -149,7 +151,7 @@ def command_run(self, context):
 
     # Check Object Type & Mode First
     obj = context.view_layer.objects.active
-    if obj is not None:
+    if obj is not None and command[0].upper() not in {"M", "?", "HELP"}:
         if obj.mode not in {"OBJECT", "EDIT"} or obj.type != "MESH":
             pg.error = PDT_OBJ_MODE_ERROR
             context.window_manager.popup_menu(oops, title="Error", icon="ERROR")
@@ -308,7 +310,6 @@ def pdt_help(self, context):
     """Display PDT Command Line help in a pop-up.
 
     Args:
-        Self: Itself as a reference for action
         context: Blender bpy.context instance
 
     Returns:
@@ -410,8 +411,8 @@ def command_parse(context):
         pg: PDT Parameters Group - our variables
         values_out: The Output Values as a list of numbers
         obj: The Active Object
-        obj_loc: The objects location in 3D space
-        bm: The objects Bmesh
+        obj_loc: The object's location in 3D space
+        bm: The object's Bmesh
         verts: The object's selected vertices, or selected history vertices.
     """
     scene = context.scene
@@ -433,11 +434,32 @@ def command_parse(context):
     # Apply System Rounding
     decimal_places = context.preferences.addons[__package__].preferences.pdt_input_round
     values_out = [str(round(float(v), decimal_places)) for v in values]
-    bm = "None"
+    bm = "No Bmesh"
     obj_loc = Vector((0,0,0))
     verts = []
 
+    if mode == "a" and operation not in {"C", "P"}:
+        # Place new Vetex, or Extrude Vertices by Absolute Coords.
+        if mode_sel == 'REL':
+            pg.select = 'SEL'
+        if obj is not None:
+            if obj.mode == "EDIT":
+                bm = bmesh.from_edit_mesh(obj.data)
+                obj_loc = obj.matrix_world.decompose()[0]
+                verts = []
+            else:
+                pg.error = PDT_OBJ_MODE_ERROR
+                context.window_manager.popup_menu(oops, title="Error", icon="ERROR")
+                raise PDT_ObjectModeError
+        else:
+            pg.error = PDT_ERR_NO_ACT_OBJ
+            context.window_manager.popup_menu(oops, title="Error", icon="ERROR")
+            raise PDT_NoObjectError
+
+
     if mode_sel == 'SEL' and mode not in {"a"}:
+        # All other options except Cursor or Pivot by Absolute
+        # These options require no object, etc.
         bm, good = obj_check(obj, scene, operation)
         if good and obj.mode == 'EDIT':
             obj_loc = obj.matrix_world.decompose()[0]
@@ -466,7 +488,7 @@ def move_cursor_pivot(context, pg, operation, mode, obj, verts, values):
         mode: The Operation Mode, e.g. a for Absolute
         obj: The Active Object
         verts: The object's selected vertices, or selected history vertices
-        values: The paramters passed e.g. 1,4,3 for Catrtesan Coordinates
+        values: The parameters passed e.g. 1,4,3 for Cartesian Coordinates
 
     Returns:
         Nothing.
@@ -543,9 +565,9 @@ def move_entities(context, pg, operation, mode, obj, bm, verts, values):
         operation: The Operation e.g. Create New Vertex
         mode: The Operation Mode, e.g. a for Absolute
         obj: The Active Object
-        bm: The objects Bmesh
+        bm: The object's Bmesh
         verts: The object's selected vertices, or selected history vertices
-        values: The paramters passed e.g. 1,4,3 for Catrtesan Coordinates
+        values: The parameters passed e.g. 1,4,3 for Cartesian Coordinates
 
     Returns:
         Nothing.
@@ -666,10 +688,10 @@ def split_edges(context, pg, operation, mode, obj, obj_loc, bm, values):
         operation: The Operation e.g. Create New Vertex
         mode: The Operation Mode, e.g. a for Absolute
         obj: The Active Object
-        obj_loc: The objects location in 3D space
-        bm: The objects Bmesh
+        obj_loc: The object's location in 3D space
+        bm: The object's Bmesh
         verts: The object's selected vertices, or selected history vertices
-        values: The paramters passed e.g. 1,4,3 for Catrtesan Coordinates
+        values: The parameters passed e.g. 1,4,3 for Cartesian Coordinates
 
     Returns:
         Nothing.
@@ -770,10 +792,10 @@ def extrude_vertices(context, pg, operation, mode, obj, obj_loc, bm, verts, valu
         operation: The Operation e.g. Create New Vertex
         mode: The Operation Mode, e.g. a for Absolute
         obj: The Active Object
-        obj_loc: The objects location in 3D space
-        bm: The objects Bmesh
+        obj_loc: The object's location in 3D space
+        bm: The object's Bmesh
         verts: The object's selected vertices, or selected history vertices
-        values: The paramters passed e.g. 1,4,3 for Catrtesan Coordinates
+        values: The parameters passed e.g. 1,4,3 for Cartesian Coordinates
 
     Returns:
         Nothing.
@@ -852,8 +874,8 @@ def extrude_geometry(context, pg, operation, mode, obj, bm, values):
         operation: The Operation e.g. Create New Vertex
         mode: The Operation Mode, e.g. a for Absolute
         obj: The Active Object
-        bm: The objects Bmesh
-        values: The paramters passed e.g. 1,4,3 for Catrtesan Coordinates
+        bm: The object's Bmesh
+        values: The parameters passed e.g. 1,4,3 for Cartesian Coordinates
 
     Returns:
         Nothing.
@@ -905,8 +927,8 @@ def duplicate_geometry(context, pg, operation, mode, obj, bm, values):
         operation: The Operation e.g. Create New Vertex
         mode: The Operation Mode, e.g. a for Absolute
         obj: The Active Object
-        bm: The objects Bmesh
-        values: The paramters passed e.g. 1,4,3 for Catrtesan Coordinates
+        bm: The object's Bmesh
+        values: The parameters passed e.g. 1,4,3 for Cartesian Coordinates
 
     Returns:
         Nothing.
@@ -958,9 +980,9 @@ def fillet_geometry(context, pg, mode, obj, bm, verts, values):
         operation: The Operation e.g. Create New Vertex
         mode: The Operation Mode, e.g. a for Absolute
         obj: The Active Object
-        bm: The objects Bmesh
+        bm: The object's Bmesh
         verts: The object's selected vertices, or selected history vertices
-        values: The paramters passed e.g. 1,4,3 for Catrtesan Coordinates
+        values: The parameters passed e.g. 1,4,3 for Cartesian Coordinates
 
     Returns:
         Nothing.
@@ -972,7 +994,8 @@ def fillet_geometry(context, pg, mode, obj, bm, verts, values):
         return
     if mode in {"i", "v"}:
         vert_bool = True
-    elif mode == "e":
+    else:
+        # Must be "e"
         vert_bool = False
     # Note that passing an empty parameter results in that parameter being seen as "0"
     # _offset <= 0 is ignored since a bevel/fillet radius must be > 0 to make sense
