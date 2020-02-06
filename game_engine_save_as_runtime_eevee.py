@@ -154,6 +154,10 @@ def WriteRuntime(player_path, output_path, copy_python, overwrite_lib, copy_dlls
         py_folder = os.path.join(bpy.app.version_string.split()[0], "python", "lib")
         dst = os.path.join(runtime_dir, py_folder)
         CopyPythonLibs(dst, overwrite_lib, report)
+        py_folder = os.path.join(bpy.app.version_string.split()[0], "python", "DLLs")
+        src = os.path.join(blender_dir, py_folder)
+        dst = os.path.join(runtime_dir, py_folder)
+        shutil.copytree(src, dst)
         print("done")
 
     # Copy DLLs
