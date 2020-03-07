@@ -223,12 +223,14 @@ class SaveAsRuntime(bpy.types.Operator):
         # XXX, this line looks suspicious, could be done better?
         blender_bin_dir = '/' + os.path.join(*bpy.app.binary_path.split('/')[0:-4])
         ext = '.app'
+        blenderplayer_name = 'Blenderplayer'
     else:
         blender_bin_path = bpy.app.binary_path
         blender_bin_dir = os.path.dirname(blender_bin_path)
         ext = os.path.splitext(blender_bin_path)[-1].lower()
+        blenderplayer_name = 'blenderplayer'
 
-    default_player_path = os.path.join(blender_bin_dir, 'blenderplayer' + ext)
+    default_player_path = os.path.join(blender_bin_dir, blenderplayer_name + ext)
     player_path: StringProperty(
             name="Player Path",
             description="The path to the player to use",
