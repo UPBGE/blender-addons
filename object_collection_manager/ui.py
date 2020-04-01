@@ -256,7 +256,8 @@ class CollectionManager(Operator):
             active_laycol_name = view_layer.active_layer_collection.name
             active_laycol_row_index = layer_collections[active_laycol_name]["row_index"]
             cm.cm_list_index = active_laycol_row_index
-        except:
+
+        except KeyError: # Master Collection isn't supported
             cm.cm_list_index = -1
 
         # check if in phantom mode and if it's still viable
@@ -343,7 +344,7 @@ class CM_UL_items(UIList):
         if context.preferences.addons[__package__].preferences.enable_qcd:
             QCD = row.row()
             QCD.scale_x = 0.4
-            QCD.prop(item, "qcd_slot", text="")
+            QCD.prop(item, "qcd_slot_idx", text="")
 
         name_row = row.row()
 
@@ -483,7 +484,7 @@ class CM_UL_items(UIList):
             flt_flags = [0] * len(list_items)
 
             for idx, item in enumerate(list_items):
-                if item.qcd_slot:
+                if item.qcd_slot_idx:
                     flt_flags[idx] |= self.bitflag_filter_item
 
         else: # display as treeview
@@ -533,10 +534,10 @@ def view3d_header_qcd_slots(self, context):
     update_collection_tree(context)
 
     for x in range(20):
-        qcd_slot = qcd_slots.get_name(str(x+1))
+        qcd_slot_name = qcd_slots.get_name(str(x+1))
 
-        if qcd_slot:
-            qcd_laycol = layer_collections[qcd_slot]["ptr"]
+        if qcd_slot_name:
+            qcd_laycol = layer_collections[qcd_slot_name]["ptr"]
             collection_objects = qcd_laycol.collection.objects
             selected_objects = qcd_operators.get_move_selection()
             active_object = qcd_operators.get_move_active()
