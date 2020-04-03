@@ -28,12 +28,14 @@ from bpy.props import BoolProperty
 
 from .internals import (
     collection_tree,
+    collection_state,
     expanded,
     get_max_lvl,
     layer_collections,
     qcd_slots,
     update_collection_tree,
     update_property_group,
+    generate_state,
 )
 
 from .operators import (
@@ -107,15 +109,15 @@ class CollectionManager(Operator):
 
         sec1.operator("view3d.expand_all_items", text=text)
 
-        if context.preferences.addons[__package__].preferences.enable_qcd:
-            renum = toggle_row.row()
-            renum.alignment = 'LEFT'
-            renum.operator("view3d.renumerate_qcd_slots")
-
         for laycol in collection_tree:
             if laycol["has_children"]:
                 sec1.enabled = True
                 break
+
+        if context.preferences.addons[__package__].preferences.enable_qcd:
+            renum = toggle_row.row()
+            renum.alignment = 'LEFT'
+            renum.operator("view3d.renumerate_qcd_slots")
 
         sec2 = toggle_row.row()
         sec2.alignment = 'RIGHT'
@@ -240,6 +242,9 @@ class CollectionManager(Operator):
             view.enabled = False
             addcollec_row.enabled = False
 
+            if context.preferences.addons[__package__].preferences.enable_qcd:
+                renum.enabled = False
+
 
     def execute(self, context):
         wm = context.window_manager
@@ -260,13 +265,48 @@ class CollectionManager(Operator):
         except KeyError: # Master Collection isn't supported
             cm.cm_list_index = -1
 
+        # check if history/buffer state still correct
+        if collection_state:
+            new_state = generate_state()
+
+            if new_state["name"] != collection_state["name"]:
+                copy_buffer["RTO"] = ""
+                copy_buffer["values"].clear()
+
+                swap_buffer["A"]["RTO"] = ""
+                swap_buffer["A"]["values"].clear()
+                swap_buffer["B"]["RTO"] = ""
+                swap_buffer["B"]["values"].clear()
+
+                for rto, history in rto_history.items():
+                    if view_layer.name in history:
+                        del history[view_layer.name]
+
+
+            else:
+                for rto in ["exclude", "select", "hide", "disable", "render"]:
+                    if new_state[rto] != collection_state[rto]:
+                        if view_layer.name in rto_history[rto]:
+                            del rto_history[rto][view_layer.name]
+
+                        if view_layer.name in rto_history[rto+"_all"]:
+                            del rto_history[rto+"_all"][view_layer.name]
+
         # check if in phantom mode and if it's still viable
         if cm.in_phantom_mode:
-            if set(layer_collections.keys()) != set(phantom_history["initial_state"].keys()):
+            if layer_collections.keys() != phantom_history["initial_state"].keys():
                 cm.in_phantom_mode = False
 
             if view_layer.name != phantom_history["view_layer"]:
                 cm.in_phantom_mode = False
+
+            if not cm.in_phantom_mode:
+                for key, value in phantom_history.items():
+                    try:
+                        value.clear()
+                    except AttributeError:
+                        if key == "view_layer":
+                            phantom_history["view_layer"] = ""
 
         # handle window sizing
         max_width = 960
@@ -284,6 +324,12 @@ class CollectionManager(Operator):
             width = max_width
 
         return wm.invoke_popup(self, width=width)
+
+    def __del__(self):
+        global collection_state
+
+        collection_state.clear()
+        collection_state.update(generate_state())
 
 
 class CM_UL_items(UIList):
@@ -444,6 +490,9 @@ class CM_UL_items(UIList):
             name_row.enabled = False
             row_setcol.enabled = False
             rm_op.enabled = False
+
+            if context.preferences.addons[__package__].preferences.enable_qcd:
+                QCD.enabled = False
 
 
     def draw_filter(self, context, layout):
