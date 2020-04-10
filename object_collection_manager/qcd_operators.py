@@ -38,7 +38,8 @@ from .internals import (
     update_property_group,
     get_modifiers,
     get_move_selection,
-    get_move_active
+    get_move_active,
+    update_qcd_header,
 )
 
 from .operators import rto_history
@@ -115,10 +116,7 @@ class MoveToQCDSlot(Operator):
                 pass
 
         # update header UI
-        cm = bpy.context.scene.collection_manager
-        cm.update_header.clear()
-        new_update_header = cm.update_header.add()
-        new_update_header.name = "updated"
+        update_qcd_header()
 
         return {'FINISHED'}
 
@@ -139,9 +137,9 @@ class ViewMoveQCDSlot(Operator):
         slot_string = f"QCD Slot {properties.slot}: \"{slot_name}\"\n"
 
         hotkey_string = (
-            "  * Shift-Click to toggle QCD slot.\n"
-            "  * Ctrl-Click to move objects to QCD slot.\n"
-            "  * Ctrl-Shift-Click to toggle objects' slot"
+            "  * Shift+LMB - Toggle QCD slot.\n"
+            "  * Ctrl+LMB - Move objects to QCD slot.\n"
+            "  * Ctrl+Shift+Click - Toggle objects' slot"
             )
 
         return f"{slot_string}{hotkey_string}"
@@ -240,10 +238,7 @@ class ViewQCDSlot(Operator):
             context.view_layer.active_layer_collection = qcd_laycol
 
         # update header UI
-        cm = bpy.context.scene.collection_manager
-        cm.update_header.clear()
-        new_update_header = cm.update_header.add()
-        new_update_header.name = "updated"
+        update_qcd_header()
 
         view_layer = context.view_layer.name
         if view_layer in rto_history["exclude"]:
@@ -255,8 +250,11 @@ class ViewQCDSlot(Operator):
 
 
 class RenumerateQCDSlots(Operator):
-    '''Re-numerate QCD slots\n  * Ctrl-Click to include collections marked by the user as non QCD slots'''
     bl_label = "Re-numerate QCD Slots"
+    bl_description = (
+        "Re-numerate QCD slots\n"
+        "  * Ctrl+LMB - Include collections marked by the user as non QCD slots"
+        )
     bl_idname = "view3d.renumerate_qcd_slots"
     bl_options = {'REGISTER', 'UNDO'}
 
