@@ -1516,7 +1516,7 @@ def add_Nylon_Head(OUTSIDE_RADIUS, Z_LOCATION, DIV_COUNT):
     sVerts, sFaces = SpinDup(verts, faces, 360, DIV_COUNT, 'z')
     sVerts.extend(verts)        # add the start verts to the Spin verts to complete the loop
 
-    faces.extend(Build_Face_List_Quads(FaceStart, Row - 1, DIV_COUNT))
+    faces.extend(Build_Face_List_Quads(FaceStart, Row - 1, DIV_COUNT,1))
 
     return Move_Verts_Up_Z(sVerts, 0), faces, Lowest_Z_Vert
 
@@ -1881,7 +1881,8 @@ def Bolt_Mesh(props, context):
         if Allen_Bit_Dia(props.bf_Allen_Bit_Flat_Distance) > Max_Pan_Bit_Dia(props.bf_Pan_Head_Dia):
             ReSized_Allen_Bit_Flat_Distance = Allen_Bit_Dia_To_Flat(
                                                 Max_Pan_Bit_Dia(props.bf_Pan_Head_Dia)
-                                                ) * 1.05
+                                                )
+            ReSized_Allen_Bit_Flat_Distance -= ReSized_Allen_Bit_Flat_Distance * 0.05   # It looks better if it is just a bit smaller
             # print ("Resized Allen Bit Flat Distance to ",ReSized_Allen_Bit_Flat_Distance)
 
     # Bit Mesh
