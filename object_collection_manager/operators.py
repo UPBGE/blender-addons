@@ -65,6 +65,29 @@ from .operator_utils import (
     clear_swap,
 )
 
+class SetActiveCollection(Operator):
+    '''Set the active collection'''
+    bl_label = "Set Active Collection"
+    bl_idname = "view3d.set_active_collection"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    collection_index: IntProperty()
+    collection_name: StringProperty()
+
+    def execute(self, context):
+        if self.collection_index == 0:
+            cm = context.scene.collection_manager
+            cm.cm_list_index = -1
+            layer_collection = context.view_layer.layer_collection
+
+        else:
+            laycol = layer_collections[self.collection_name]
+            layer_collection = laycol["ptr"]
+
+        context.view_layer.active_layer_collection = layer_collection
+
+        return {'FINISHED'}
+
 
 class ExpandAllOperator(Operator):
     '''Expand/Collapse all collections'''
@@ -128,19 +151,13 @@ class ExpandSublevelOperator(Operator):
                 expand = True
 
             # do expanding/collapsing
-            def loop(laycol):
-                for item in laycol.children:
-                    if expand:
-                        if not item.name in expanded:
-                            expanded.add(item.name)
-                    else:
-                        if item.name in expanded:
-                            expanded.remove(item.name)
+            def set_expanded(layer_collection):
+                if expand:
+                    expanded.add(layer_collection.name)
+                else:
+                    expanded.discard(layer_collection.name)
 
-                    if len(item.children) > 0:
-                        loop(item)
-
-            loop(layer_collections[self.name]["ptr"])
+            apply_to_children(layer_collections[self.name]["ptr"], set_expanded)
 
             expand_history["target"] = ""
             expand_history["history"].clear()
@@ -203,8 +220,12 @@ class CMSetCollectionOperator(Operator):
     collection_name: StringProperty()
 
     def invoke(self, context, event):
-        laycol = layer_collections[self.collection_name]
-        target_collection = laycol["ptr"].collection
+        if self.collection_index == 0:
+            target_collection = context.view_layer.layer_collection.collection
+
+        else:
+            laycol = layer_collections[self.collection_name]
+            target_collection = laycol["ptr"].collection
 
         selected_objects = get_move_selection()
         active_object = get_move_active()
@@ -229,7 +250,8 @@ class CMSetCollectionOperator(Operator):
                         target_collection.objects.link(obj)
 
             else:
-                errors = False
+                warnings = False
+                master_warning = False
 
                 # remove from collections
                 for obj in selected_objects:
@@ -237,14 +259,34 @@ class CMSetCollectionOperator(Operator):
 
                         # disallow removing if only one
                         if len(obj.users_collection) == 1:
-                            errors = True
-                            continue
+                            warnings = True
+                            master_laycol = context.view_layer.layer_collection
+                            master_collection = master_laycol.collection
+
+                            if obj.name not in master_collection.objects:
+                                master_collection.objects.link(obj)
+
+                            else:
+                                master_warning = True
+                                continue
+
 
                         # remove from collection
                         target_collection.objects.unlink(obj)
 
-                if errors:
-                    send_report("Error removing 1 or more objects from this collection.\nObjects would be left without a collection")
+                if warnings:
+                    if master_warning:
+                        send_report(
+                        "Error removing 1 or more objects from the Scene Collection.\n"
+                        "Objects would be left without a collection."
+                        )
+                        self.report({"WARNING"},
+                        "Error removing 1 or more objects from the Scene Collection."
+                        "  Objects would be left without a collection."
+                        )
+
+                    else:
+                        self.report({"INFO"}, "1 or more objects moved to Scene Collection.")
 
 
         else:
@@ -255,7 +297,7 @@ class CMSetCollectionOperator(Operator):
 
                 # remove from all other collections
                 for collection in obj.users_collection:
-                    if collection.name != target_collection.name:
+                    if collection != target_collection:
                         collection.objects.unlink(obj)
 
         # update the active object if needed
@@ -870,21 +912,30 @@ class CMNewCollectionOperator(Operator):
 
         # if there are collections
         if len(cm.cm_list_collection) > 0:
-            # get selected collection
-            laycol = layer_collections[cm.cm_list_collection[cm.cm_list_index].name]
+            if not cm.cm_list_index == -1:
+                # get selected collection
+                laycol = layer_collections[cm.cm_list_collection[cm.cm_list_index].name]
 
-            # add new collection
-            if self.child:
-                laycol["ptr"].collection.children.link(new_collection)
-                expanded.add(laycol["name"])
+                # add new collection
+                if self.child:
+                    laycol["ptr"].collection.children.link(new_collection)
+                    expanded.add(laycol["name"])
 
-                # update tree view property
-                update_property_group(context)
+                    # update tree view property
+                    update_property_group(context)
 
-                cm.cm_list_index = layer_collections[new_collection.name]["row_index"]
+                    cm.cm_list_index = layer_collections[new_collection.name]["row_index"]
+
+                else:
+                    laycol["parent"]["ptr"].collection.children.link(new_collection)
+
+                    # update tree view property
+                    update_property_group(context)
+
+                    cm.cm_list_index = layer_collections[new_collection.name]["row_index"]
 
             else:
-                laycol["parent"]["ptr"].collection.children.link(new_collection)
+                context.scene.collection.children.link(new_collection)
 
                 # update tree view property
                 update_property_group(context)
@@ -930,12 +981,8 @@ class CMPhantomModeOperator(Operator):
             # save current visibility state
             phantom_history["view_layer"] = view_layer.name
 
-            laycol_iter_list = [view_layer.layer_collection.children]
-            while len(laycol_iter_list) > 0:
-                new_laycol_iter_list = []
-                for laycol_iter in laycol_iter_list:
-                    for layer_collection in laycol_iter:
-                        phantom_history["initial_state"][layer_collection.name] = {
+            def save_visibility_state(layer_collection):
+                phantom_history["initial_state"][layer_collection.name] = {
                             "exclude": layer_collection.exclude,
                             "select": layer_collection.collection.hide_select,
                             "hide": layer_collection.hide_viewport,
@@ -943,11 +990,7 @@ class CMPhantomModeOperator(Operator):
                             "render": layer_collection.collection.hide_render,
                                 }
 
-                        if len(layer_collection.children) > 0:
-                            new_laycol_iter_list.append(layer_collection.children)
-
-                laycol_iter_list = new_laycol_iter_list
-
+            apply_to_children(view_layer.layer_collection, save_visibility_state)
 
             # save current rto history
             for rto, history, in rto_history.items():
@@ -955,35 +998,18 @@ class CMPhantomModeOperator(Operator):
                     phantom_history[rto+"_history"] = deepcopy(history[view_layer.name])
 
 
-        # return to normal mode
-        else:
-            laycol_iter_list = [view_layer.layer_collection.children]
-            while len(laycol_iter_list) > 0:
-                new_laycol_iter_list = []
-                for laycol_iter in laycol_iter_list:
-                    for layer_collection in laycol_iter:
-                        phantom_laycol = phantom_history["initial_state"][layer_collection.name]
 
-                        layer_collection.exclude = \
-                            phantom_laycol["exclude"]
+        else: # return to normal mode
+            def restore_visibility_state(layer_collection):
+                phantom_laycol = phantom_history["initial_state"][layer_collection.name]
 
-                        layer_collection.collection.hide_select = \
-                            phantom_laycol["select"]
+                layer_collection.exclude = phantom_laycol["exclude"]
+                layer_collection.collection.hide_select = phantom_laycol["select"]
+                layer_collection.hide_viewport = phantom_laycol["hide"]
+                layer_collection.collection.hide_viewport = phantom_laycol["disable"]
+                layer_collection.collection.hide_render = phantom_laycol["render"]
 
-                        layer_collection.hide_viewport = \
-                            phantom_laycol["hide"]
-
-                        layer_collection.collection.hide_viewport = \
-                            phantom_laycol["disable"]
-
-                        layer_collection.collection.hide_render = \
-                            phantom_laycol["render"]
-
-
-                        if len(layer_collection.children) > 0:
-                            new_laycol_iter_list.append(layer_collection.children)
-
-                laycol_iter_list = new_laycol_iter_list
+            apply_to_children(view_layer.layer_collection, restore_visibility_state)
 
 
             # restore previous rto history
