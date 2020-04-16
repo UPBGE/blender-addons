@@ -161,21 +161,18 @@ def isolate_rto(cls, self, view_layer, rto, *, children=False):
 
 def toggle_children(self, view_layer, rto):
     laycol_ptr = layer_collections[self.name]["ptr"]
-    # reset exclude history
+    # clear rto history
     del rto_history[rto][view_layer]
+    rto_history[rto+"_all"].pop(view_layer, None)
 
-    if rto == "exclude":
-        laycol_ptr.exclude = not laycol_ptr.exclude
+    # toggle rto state
+    state = not get_rto(laycol_ptr, rto)
+    set_rto(laycol_ptr, rto, state)
 
-    else:
-        # toggle selectability of collection
-        state = not get_rto(laycol_ptr, rto)
-        set_rto(laycol_ptr, rto, state)
+    def set_state(layer_collection):
+        set_rto(layer_collection, rto, state)
 
-        def set_state(layer_collection):
-            set_rto(layer_collection, rto, state)
-
-        apply_to_children(laycol_ptr, set_state)
+    apply_to_children(laycol_ptr, set_state)
 
 
 def activate_all_rtos(view_layer, rto):
@@ -202,15 +199,29 @@ def activate_all_rtos(view_layer, rto):
         for x, item in enumerate(layer_collections.values()):
             set_rto(item["ptr"], rto, history[x])
 
+        # clear rto history
         del rto_history[rto+"_all"][view_layer]
 
 
-def invert_rtos(rto):
-    for x, item in enumerate(layer_collections.values()):
-        set_rto(item["ptr"], rto, not get_rto(item["ptr"], rto))
+def invert_rtos(view_layer, rto):
+    if rto == "exclude":
+        orig_values = []
+
+        for item in layer_collections.values():
+            orig_values.append(get_rto(item["ptr"], rto))
+
+        for x, item in enumerate(layer_collections.values()):
+            set_rto(item["ptr"], rto, not orig_values[x])
+
+    else:
+        for item in layer_collections.values():
+            set_rto(item["ptr"], rto, not get_rto(item["ptr"], rto))
+
+    # clear rto history
+    rto_history[rto].pop(view_layer, None)
 
 
-def copy_rtos(rto):
+def copy_rtos(view_layer, rto):
     if not copy_buffer["RTO"]:
         # copy
         copy_buffer["RTO"] = rto
@@ -222,12 +233,16 @@ def copy_rtos(rto):
         for x, laycol in enumerate(layer_collections.values()):
             set_rto(laycol["ptr"], rto, copy_buffer["values"][x])
 
+        # clear rto history
+        rto_history[rto].pop(view_layer, None)
+        del rto_history[rto+"_all"][view_layer]
+
         # clear copy buffer
         copy_buffer["RTO"] = ""
         copy_buffer["values"].clear()
 
 
-def swap_rtos(rto):
+def swap_rtos(view_layer, rto):
     if not swap_buffer["A"]["values"]:
         # get A
         swap_buffer["A"]["RTO"] = rto
@@ -244,6 +259,16 @@ def swap_rtos(rto):
         for x, laycol in enumerate(layer_collections.values()):
             set_rto(laycol["ptr"], swap_buffer["A"]["RTO"], swap_buffer["B"]["values"][x])
             set_rto(laycol["ptr"], swap_buffer["B"]["RTO"], swap_buffer["A"]["values"][x])
+
+
+        # clear rto history
+        swap_a = swap_buffer["A"]["RTO"]
+        swap_b = swap_buffer["B"]["RTO"]
+
+        rto_history[swap_a].pop(view_layer, None)
+        rto_history[swap_a+"_all"].pop(view_layer, None)
+        rto_history[swap_b].pop(view_layer, None)
+        rto_history[swap_b+"_all"].pop(view_layer, None)
 
         # clear swap buffer
         swap_buffer["A"]["RTO"] = ""
