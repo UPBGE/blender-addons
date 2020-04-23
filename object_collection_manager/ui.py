@@ -331,7 +331,7 @@ class CollectionManager(Operator):
         except KeyError: # Master Collection is special and not part of regular collections
             cm.cm_list_index = -1
 
-        # check if history/buffer state still correct
+        # check if expanded & history/buffer state still correct
         if collection_state:
             new_state = generate_state()
 
@@ -343,6 +343,16 @@ class CollectionManager(Operator):
                 swap_buffer["A"]["values"].clear()
                 swap_buffer["B"]["RTO"] = ""
                 swap_buffer["B"]["values"].clear()
+
+                for name in list(expanded):
+                    laycol = layer_collections.get(name)
+                    if not laycol or not laycol["has_children"]:
+                        expanded.remove(name)
+
+                for name in list(expand_history["history"]):
+                    laycol = layer_collections.get(name)
+                    if not laycol or not laycol["has_children"]:
+                        expand_history["history"].remove(name)
 
                 for rto, history in rto_history.items():
                     if view_layer.name in history:
@@ -440,15 +450,19 @@ class CM_UL_items(UIList):
             if laycol["expanded"]:
                 highlight = True if expand_history["target"] == item.name else False
 
-                prop = row.operator("view3d.expand_sublevel", text="", icon='DISCLOSURE_TRI_DOWN',
+                prop = row.operator("view3d.expand_sublevel", text="",
+                                    icon='DISCLOSURE_TRI_DOWN',
                                     emboss=highlight, depress=highlight)
                 prop.expand = False
                 prop.name = item.name
                 prop.index = index
 
             else:
+                highlight = True if expand_history["target"] == item.name else False
+
                 prop = row.operator("view3d.expand_sublevel", text="",
-                                    icon='DISCLOSURE_TRI_RIGHT', emboss=False)
+                                    icon='DISCLOSURE_TRI_RIGHT',
+                                    emboss=highlight, depress=highlight)
                 prop.expand = True
                 prop.name = item.name
                 prop.index = index

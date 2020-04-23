@@ -96,12 +96,18 @@ class ExpandAllOperator(Operator):
     bl_options = {'REGISTER', 'UNDO'}
 
     def execute(self, context):
+        global expand_history
+
         if len(expanded) > 0:
             expanded.clear()
         else:
             for laycol in layer_collections.values():
                 if laycol["ptr"].children:
                     expanded.add(laycol["name"])
+
+        # clear expand history
+        expand_history["target"] = ""
+        expand_history["history"].clear()
 
         # update tree view
         update_property_group(context)
@@ -124,9 +130,6 @@ class ExpandSublevelOperator(Operator):
     name: StringProperty()
     index: IntProperty()
 
-    # static class var
-    isolated = False
-
     def invoke(self, context, event):
         global expand_history
         cls = ExpandSublevelOperator
@@ -136,7 +139,6 @@ class ExpandSublevelOperator(Operator):
         if modifiers == {"alt"}:
             expand_history["target"] = ""
             expand_history["history"].clear()
-            cls.isolated = False
 
         elif modifiers == {"ctrl"}:
             # expand/collapse all subcollections
@@ -161,7 +163,6 @@ class ExpandSublevelOperator(Operator):
 
             expand_history["target"] = ""
             expand_history["history"].clear()
-            cls.isolated = False
 
         elif modifiers == {"shift"}:
             def isolate_tree(current_laycol):
@@ -175,18 +176,19 @@ class ExpandSublevelOperator(Operator):
                 if parent["parent"]:
                     isolate_tree(parent)
 
-            if cls.isolated:
+            if self.name == expand_history["target"]:
                 for item in expand_history["history"]:
                     expanded.add(item)
 
                 expand_history["target"] = ""
                 expand_history["history"].clear()
-                cls.isolated = False
 
             else:
+                expand_history["target"] = ""
+                expand_history["history"].clear()
+
                 isolate_tree(layer_collections[self.name])
                 expand_history["target"] = self.name
-                cls.isolated = True
 
         else:
             # expand/collapse collection
@@ -197,7 +199,6 @@ class ExpandSublevelOperator(Operator):
 
             expand_history["target"] = ""
             expand_history["history"].clear()
-            cls.isolated = False
 
 
         # set selected row to the collection you're expanding/collapsing and update tree view
@@ -850,6 +851,7 @@ class CMRemoveCollectionOperator(Operator):
 
     def execute(self, context):
         global rto_history
+        global expand_history
         global qcd_slots
 
         cm = context.scene.collection_manager
@@ -871,8 +873,16 @@ class CMRemoveCollectionOperator(Operator):
                 parent_collection.children.link(subcollection)
 
 
-        # remove collection and update tree view
+        # remove collection, update expanded, and update tree view
         bpy.data.collections.remove(collection)
+        expanded.discard(self.collection_name)
+
+        if expand_history["target"] == self.collection_name:
+            expand_history["target"] = ""
+
+        if self.collection_name in expand_history["history"]:
+            expand_history["history"].remove(self.collection_name)
+
         update_property_group(context)
 
 
