@@ -412,6 +412,7 @@ class CMUnExcludeAllOperator(Operator):
     def invoke(self, context, event):
         global rto_history
 
+        orig_active_collection = context.view_layer.active_layer_collection
         view_layer = context.view_layer.name
         modifiers = get_modifiers(event)
 
@@ -435,6 +436,9 @@ class CMUnExcludeAllOperator(Operator):
 
         else:
             activate_all_rtos(view_layer, "exclude")
+
+        # reset active collection
+        context.view_layer.active_layer_collection = orig_active_collection
 
         return {'FINISHED'}
 
@@ -926,12 +930,27 @@ class CMRemoveCollectionOperator(Operator):
 
 rename = [False]
 class CMNewCollectionOperator(Operator):
-    '''Add New Collection'''
     bl_label = "Add New Collection"
     bl_idname = "view3d.add_collection"
     bl_options = {'UNDO'}
 
     child: BoolProperty()
+
+    @classmethod
+    def description(cls, context, properties):
+        if properties.child:
+            tooltip = (
+                "Add New SubCollection.\n"
+                "Add a new subcollection to the currently selected collection"
+                )
+
+        else:
+            tooltip = (
+                "Add New Collection.\n"
+                "Add a new collection as a sibling of the currently selected collection"
+                )
+
+        return tooltip
 
     def execute(self, context):
         global rto_history
