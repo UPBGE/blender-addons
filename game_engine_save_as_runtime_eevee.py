@@ -148,13 +148,17 @@ def WriteRuntime(player_path, output_path, copy_python, overwrite_lib, copy_dlls
     # Copy bundled Python
     blender_dir = os.path.dirname(bpy.app.binary_path)
     runtime_dir = os.path.dirname(output_path)
+    
+    # Extract new version string. Only take first 4 digits (i.e 2.90)
+    string = bpy.app.version_string.split()[0]
+    version_string = string[:4]
 
     if copy_python:
         print("Copying Python files...", end=" ")
-        py_folder = os.path.join(bpy.app.version_string.split()[0], "python", "lib")
+        py_folder = os.path.join(version_string, "python", "lib")
         dst = os.path.join(runtime_dir, py_folder)
         CopyPythonLibs(dst, overwrite_lib, report)
-        py_folder = os.path.join(bpy.app.version_string.split()[0], "python", "DLLs")
+        py_folder = os.path.join(version_string, "python", "DLLs")
         src = os.path.join(blender_dir, py_folder)
         dst = os.path.join(runtime_dir, py_folder)
         shutil.copytree(src, dst)
@@ -175,7 +179,7 @@ def WriteRuntime(player_path, output_path, copy_python, overwrite_lib, copy_dlls
     # Copy Scripts folder
     if copy_scripts:
         print("Copying scripts and modules...", end=" ")
-        scripts_folder = os.path.join(bpy.app.version_string.split()[0], "scripts")
+        scripts_folder = os.path.join(version_string, "scripts")
         src = os.path.join(blender_dir, scripts_folder)
         dst = os.path.join(runtime_dir, scripts_folder)
         shutil.copytree(src, dst)
@@ -184,19 +188,19 @@ def WriteRuntime(player_path, output_path, copy_python, overwrite_lib, copy_dlls
     # And copy datafiles folder
     if copy_datafiles:
         print("Copying datafiles...", end=" ")
-        datafiles_folder = os.path.join(bpy.app.version_string.split()[0], "datafiles", "gamecontroller")
+        datafiles_folder = os.path.join(version_string, "datafiles", "gamecontroller")
         src = os.path.join(blender_dir, datafiles_folder)
         dst = os.path.join(runtime_dir, datafiles_folder)
         shutil.copytree(src, dst)
-        datafiles_folder = os.path.join(bpy.app.version_string.split()[0], "datafiles", "colormanagement")
+        datafiles_folder = os.path.join(version_string, "datafiles", "colormanagement")
         src = os.path.join(blender_dir, datafiles_folder)
         dst = os.path.join(runtime_dir, datafiles_folder)
         shutil.copytree(src, dst)
-        datafiles_folder = os.path.join(bpy.app.version_string.split()[0], "datafiles", "fonts")
+        datafiles_folder = os.path.join(version_string, "datafiles", "fonts")
         src = os.path.join(blender_dir, datafiles_folder)
         dst = os.path.join(runtime_dir, datafiles_folder)
         shutil.copytree(src, dst)
-        datafiles_folder = os.path.join(bpy.app.version_string.split()[0], "datafiles", "studiolights")
+        datafiles_folder = os.path.join(version_string, "datafiles", "studiolights")
         src = os.path.join(blender_dir, datafiles_folder)
         dst = os.path.join(runtime_dir, datafiles_folder)
         shutil.copytree(src, dst)
@@ -205,7 +209,7 @@ def WriteRuntime(player_path, output_path, copy_python, overwrite_lib, copy_dlls
     # Copy modules folder (to have bpy working)
     if copy_modules and not copy_scripts:
         print("Copying modules...", end=" ")
-        modules_folder = os.path.join(bpy.app.version_string.split()[0], "scripts", "modules")
+        modules_folder = os.path.join(version_string, "scripts", "modules")
         src = os.path.join(blender_dir, modules_folder)
         dst = os.path.join(runtime_dir, modules_folder)
         shutil.copytree(src, dst)
