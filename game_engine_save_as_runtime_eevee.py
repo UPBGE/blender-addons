@@ -34,6 +34,7 @@ import os
 import sys
 import shutil
 import tempfile
+import subprocess
 
 
 def CopyPythonLibs(dst, overwrite_lib, report=print):
@@ -80,7 +81,7 @@ def WriteAppleRuntime(player_path, output_path, copy_python, overwrite_lib):
     # Python doesn't need to be copied for OS X since it's already inside blenderplayer.app
 
 
-def WriteRuntime(player_path, output_path, copy_python, overwrite_lib, copy_dlls, copy_scripts, copy_datafiles, copy_modules, report=print):
+def WriteRuntime(player_path, output_path, new_icon_path, copy_python, overwrite_lib, copy_dlls, copy_scripts, copy_datafiles, copy_modules, report=print):
     import struct
 
     # Check the paths
@@ -97,14 +98,33 @@ def WriteRuntime(player_path, output_path, copy_python, overwrite_lib, copy_dlls
     if player_path.endswith('.exe') and not output_path.endswith('.exe'):
         output_path += '.exe'
 
+    # Setup main folders
+    blender_dir = os.path.dirname(bpy.app.binary_path)
+    runtime_dir = os.path.dirname(output_path)
+    
+    # Extract new version string. Only take first 4 digits (i.e 2.90)
+    string = bpy.app.version_string.split()[0]
+    version_string = string[:4]
+
+    # Create temporal directory
+    tempdir = tempfile.mkdtemp()
+    player_path_temp = player_path
+    
+    # Change the icon for Windows
+    if (new_icon_path != '' and output_path.endswith('.exe')):
+        player_path_temp = os.path.join(tempdir, bpy.path.clean_name(player_path))
+        shutil.copyfile(player_path, player_path_temp)
+        rcedit_folder = os.path.join(version_string, "rceditcustom")
+        rcedit_path = os.path.join(blender_dir, rcedit_folder, "rcedit-x64.exe")
+        subprocess.check_call([rcedit_path, player_path_temp, "--set-icon", new_icon_path])
+        
     # Get the player's binary and the offset for the blend
-    file = open(player_path, 'rb')
+    file = open(player_path_temp, 'rb')
     player_d = file.read()
     offset = file.tell()
     file.close()
-
+        
     # Create a tmp blend file (Blenderplayer doesn't like compressed blends)
-    tempdir = tempfile.mkdtemp()
     blend_path = os.path.join(tempdir, bpy.path.clean_name(output_path))
     bpy.ops.wm.save_as_mainfile(filepath=blend_path,
                                 relative_remap=False,
@@ -119,6 +139,8 @@ def WriteRuntime(player_path, output_path, copy_python, overwrite_lib, copy_dlls
 
     # Get rid of the tmp blend, we're done with it
     os.remove(blend_path)
+    if (new_icon_path != '' and output_path.endswith('.exe')):
+        os.remove(player_path_temp)
     os.rmdir(tempdir)
 
     # Create a new file for the bundled runtime
@@ -144,15 +166,7 @@ def WriteRuntime(player_path, output_path, copy_python, overwrite_lib, copy_dlls
     # Make the runtime executable on Linux
     if os.name == 'posix':
         os.chmod(output_path, 0o755)
-
-    # Copy bundled Python
-    blender_dir = os.path.dirname(bpy.app.binary_path)
-    runtime_dir = os.path.dirname(output_path)
     
-    # Extract new version string. Only take first 4 digits (i.e 2.90)
-    string = bpy.app.version_string.split()[0]
-    version_string = string[:4]
-
     if copy_python:
         print("Copying Python files...", end=" ")
         py_folder = os.path.join(version_string, "python", "lib")
@@ -270,12 +284,18 @@ class SaveAsRuntime(bpy.types.Operator):
             default=True,
             )
 
-    # Only Windows has dlls to copy
+    # Only Windows has dlls to copy or can modify icon
     if ext == '.exe':
         copy_dlls: BoolProperty(
                 name="Copy DLLs",
                 description="Copy all needed DLLs with the runtime",
                 default=True,
+                )
+        new_icon_path: StringProperty(
+                name="New Icon Path",
+                description="The path to the new icon for player to use",
+                default="",
+                subtype='FILE_PATH',
                 )
     else:
         copy_dlls = False
@@ -286,6 +306,7 @@ class SaveAsRuntime(bpy.types.Operator):
         print("Saving runtime to %r" % self.filepath)
         WriteRuntime(self.player_path,
                      self.filepath,
+                     self.new_icon_path,
                      self.copy_python,
                      self.overwrite_lib,
                      self.copy_dlls,
