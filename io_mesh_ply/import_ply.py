@@ -110,19 +110,12 @@ class ObjectSpec:
         self.specs = []
 
     def load(self, format, stream):
-        return dict([(i.name, [i.load(format, stream) for j in range(i.count)]) for i in self.specs])
-
-        # Longhand for above LC
-        """
-        answer = {}
-        for i in self.specs:
-            answer[i.name] = []
-            for j in range(i.count):
-                if not j % 100 and meshtools.show_progress:
-                    Blender.Window.DrawProgressBar(float(j) / i.count, 'Loading ' + i.name)
-                answer[i.name].append(i.load(format, stream))
-        return answer
-        """
+        return {
+            i.name: [
+                i.load(format, stream) for j in range(i.count)
+            ]
+            for i in self.specs
+        }
 
 
 def read(filepath):
@@ -282,7 +275,7 @@ def load_ply_mesh(filepath, ply_name):
                        vertices[index][colindices[0]] * colmultiply[0],
                        vertices[index][colindices[1]] * colmultiply[1],
                        vertices[index][colindices[2]] * colmultiply[2],
-                       1.0
+                       1.0,
                     )
                     for index in indices
                 ])
