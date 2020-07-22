@@ -17,7 +17,6 @@
 #
 
 from mathutils import Vector, Quaternion, Matrix
-from mathutils.geometry import tessellate_polygon
 
 from . import gltf2_blender_export_keys
 from ...io.com.gltf2_io_debug import print_console
@@ -35,10 +34,9 @@ class Prim:
         self.indices = []
 
 class ShapeKey:
-    def __init__(self, shape_key, vertex_normals, polygon_normals):
+    def __init__(self, shape_key, split_normals):
         self.shape_key = shape_key
-        self.vertex_normals = vertex_normals
-        self.polygon_normals = polygon_normals
+        self.split_normals = split_normals
 
 
 #
@@ -124,12 +122,6 @@ def convert_swizzle_scale(scale, export_settings):
         return Vector((scale[0], scale[1], scale[2]))
 
 
-def decompose_transition(matrix, export_settings):
-    translation, rotation, scale = matrix.decompose()
-
-    return translation, rotation, scale
-
-
 def extract_primitives(glTF, blender_mesh, library, blender_object, blender_vertex_groups, modifiers, export_settings):
     """
     Extract primitives from a mesh. Polygons are triangulated and sorted by material.
@@ -144,9 +136,7 @@ def extract_primitives(glTF, blender_mesh, library, blender_object, blender_vert
 
     use_normals = export_settings[gltf2_blender_export_keys.NORMALS]
     if use_normals:
-        if blender_mesh.has_custom_normals:
-            # Custom normals are all (0, 0, 0) until calling calc_normals_split() or calc_tangents().
-            blender_mesh.calc_normals_split()
+        blender_mesh.calc_normals_split()
 
     use_tangents = False
     if use_normals and export_settings[gltf2_blender_export_keys.TANGENTS]:
@@ -211,16 +201,14 @@ def extract_primitives(glTF, blender_mesh, library, blender_object, blender_vert
         for blender_shape_key in blender_mesh.shape_keys.key_blocks:
             if blender_shape_key == blender_shape_key.relative_key or blender_shape_key.mute:
                 continue
+
+            split_normals = None
             if use_morph_normals:
-                vertex_normals = blender_shape_key.normals_vertex_get()
-                polygon_normals = blender_shape_key.normals_polygon_get()
-            else:
-                vertex_normals = None
-                polygon_normals = None
+                split_normals = blender_shape_key.normals_split_get()
+
             shape_keys.append(ShapeKey(
                 blender_shape_key,
-                vertex_normals,
-                polygon_normals,
+                split_normals,
             ))
 
 
@@ -232,7 +220,11 @@ def extract_primitives(glTF, blender_mesh, library, blender_object, blender_vert
 
     prims = {}
 
-    for blender_polygon in blender_mesh.polygons:
+    blender_mesh.calc_loop_triangles()
+
+    for loop_tri in blender_mesh.loop_triangles:
+        blender_polygon = blender_mesh.polygons[loop_tri.polygon_index]
+
         material_idx = -1
         if use_materials:
             material_idx = blender_polygon.material_index
@@ -242,43 +234,7 @@ def extract_primitives(glTF, blender_mesh, library, blender_object, blender_vert
             prim = Prim()
             prims[material_idx] = prim
 
-        if use_normals:
-            face_normal = None
-            if not (blender_polygon.use_smooth or blender_mesh.use_auto_smooth):
-                # Calc face normal/tangents
-                face_normal = blender_polygon.normal
-                if use_tangents:
-                    face_tangent = Vector((0.0, 0.0, 0.0))
-                    face_bitangent = Vector((0.0, 0.0, 0.0))
-                    for loop_index in blender_polygon.loop_indices:
-                        loop = blender_mesh.loops[loop_index]
-                        face_tangent += loop.tangent
-                        face_bitangent += loop.bitangent
-                    face_tangent.normalize()
-                    face_bitangent.normalize()
-
-        loop_index_list = []
-
-        if len(blender_polygon.loop_indices) == 3:
-            loop_index_list.extend(blender_polygon.loop_indices)
-        elif len(blender_polygon.loop_indices) > 3:
-            # Triangulation of polygon. Using internal function, as non-convex polygons could exist.
-            polyline = []
-
-            for loop_index in blender_polygon.loop_indices:
-                vertex_index = blender_mesh.loops[loop_index].vertex_index
-                v = blender_mesh.vertices[vertex_index].co
-                polyline.append(Vector((v[0], v[1], v[2])))
-
-            triangles = tessellate_polygon((polyline,))
-
-            for triangle in triangles:
-                for triangle_index in triangle:
-                    loop_index_list.append(blender_polygon.loop_indices[triangle_index])
-        else:
-            continue
-
-        for loop_index in loop_index_list:
+        for loop_index in loop_tri.loops:
             vertex_index = blender_mesh.loops[loop_index].vertex_index
             vertex = blender_mesh.vertices[vertex_index]
 
@@ -290,21 +246,11 @@ def extract_primitives(glTF, blender_mesh, library, blender_object, blender_vert
             vert += ((v[0], v[1], v[2]),)
 
             if use_normals:
-                if face_normal is None:
-                    if blender_mesh.has_custom_normals:
-                        n = blender_mesh.loops[loop_index].normal
-                    else:
-                        n = vertex.normal
-                    if use_tangents:
-                        t = blender_mesh.loops[loop_index].tangent
-                        b = blender_mesh.loops[loop_index].bitangent
-                else:
-                    n = face_normal
-                    if use_tangents:
-                        t = face_tangent
-                        b = face_bitangent
+                n = blender_mesh.loops[loop_index].normal
                 vert += ((n[0], n[1], n[2]),)
                 if use_tangents:
+                    t = blender_mesh.loops[loop_index].tangent
+                    b = blender_mesh.loops[loop_index].bitangent
                     vert += ((t[0], t[1], t[2]),)
                     vert += ((b[0], b[1], b[2]),)
                     # TODO: store just bitangent_sign in vert, not whole bitangent?
@@ -348,20 +294,8 @@ def extract_primitives(glTF, blender_mesh, library, blender_object, blender_vert
                 vert += ((v_morph[0], v_morph[1], v_morph[2]),)
 
                 if use_morph_normals:
-                    if blender_polygon.use_smooth:
-                        normals = shape_key.vertex_normals
-                        n_morph = Vector((
-                            normals[vertex_index * 3 + 0],
-                            normals[vertex_index * 3 + 1],
-                            normals[vertex_index * 3 + 2],
-                        ))
-                    else:
-                        normals = shape_key.polygon_normals
-                        n_morph = Vector((
-                            normals[blender_polygon.index * 3 + 0],
-                            normals[blender_polygon.index * 3 + 1],
-                            normals[blender_polygon.index * 3 + 2],
-                        ))
+                    normals = shape_key.split_normals
+                    n_morph = Vector(normals[loop_index * 3 : loop_index * 3 + 3])
                     n_morph = n_morph - n  # store delta
                     vert += ((n_morph[0], n_morph[1], n_morph[2]),)
 

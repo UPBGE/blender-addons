@@ -22,7 +22,7 @@ bl_info = {
     "name": "Collection Manager",
     "description": "Manage collections and their objects",
     "author": "Ryan Inch",
-    "version": (2, 9, 4),
+    "version": (2, 12, 1),
     "blender": (2, 80, 0),
     "location": "View3D - Object Mode (Shortcut - M)",
     "warning": '',  # used for warning icon and text in addons panel
@@ -110,12 +110,15 @@ classes = (
     operators.CMUnDisableRenderAllOperator,
     operators.CMNewCollectionOperator,
     operators.CMRemoveCollectionOperator,
+    operators.CMRemoveEmptyCollectionsOperator,
     operators.CMSetCollectionOperator,
     operators.CMPhantomModeOperator,
+    operators.CMApplyPhantomModeOperator,
     preferences.CMPreferences,
     ui.CM_UL_items,
     ui.CollectionManager,
     ui.CMDisplayOptionsPanel,
+    ui.SpecialsMenu,
     CollectionManagerProperties,
     )
 
