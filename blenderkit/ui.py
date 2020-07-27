@@ -876,7 +876,8 @@ def draw_callback_2d_search(self, context):
                     else:
                         iname = utils.previmg_name(ui_props.active_index)
                         img = bpy.data.images.get(iname)
-                    img.colorspace_settings.name = 'sRGB'
+                    if img:
+                        img.colorspace_settings.name = 'sRGB'
 
                 gimg = None
                 atip = ''
@@ -931,9 +932,21 @@ def mouse_raycast(context, mx, my):
     # rote = mathutils.Euler((0, 0, math.pi))
     randoffset = math.pi
     if has_hit:
-        snapped_rotation = snapped_normal.to_track_quat('Z', 'Y').to_euler()
-        up = Vector((0, 0, 1))
         props = bpy.context.scene.blenderkit_models
+        up = Vector((0, 0, 1))
+
+        if props.perpendicular_snap:
+            if snapped_normal.z > 1 - props.perpendicular_snap_threshold:
+                snapped_normal = Vector((0, 0, 1))
+            elif snapped_normal.z < -1 + props.perpendicular_snap_threshold:
+                snapped_normal = Vector((0, 0, -1))
+            elif abs(snapped_normal.z) < props.perpendicular_snap_threshold:
+                snapped_normal.z = 0
+                snapped_normal.normalize()
+
+        snapped_rotation = snapped_normal.to_track_quat('Z', 'Y').to_euler()
+
+
         if props.randomize_rotation and snapped_normal.angle(up) < math.radians(10.0):
             randoffset = props.offset_rotation_amount + math.pi + (
                     random.random() - 0.5) * props.randomize_rotation_amount
@@ -1180,30 +1193,6 @@ def update_ui_size(area, region):
     ui.rating_x = ui.bar_x
     ui.rating_y = ui.bar_y - ui.bar_height
 
-
-def get_largest_3dview():
-    maxsurf = 0
-    maxa = None
-    maxw = None
-    region = None
-    for w in bpy.context.window_manager.windows:
-        screen = w.screen
-        for a in screen.areas:
-            if a.type == 'VIEW_3D':
-                asurf = a.width * a.height
-                if asurf > maxsurf:
-                    maxa = a
-                    maxw = w
-                    maxsurf = asurf
-
-                    for r in a.regions:
-                        if r.type == 'WINDOW':
-                            region = r
-    global active_area, active_window, active_region
-    active_window = maxw
-    active_area = maxa
-    active_region = region
-    return maxw, maxa, region
 
 
 class AssetBarOperator(bpy.types.Operator):
@@ -1692,6 +1681,7 @@ class AssetBarOperator(bpy.types.Operator):
                 utils.p('author:', a)
                 search.search(author_id=a)
             return {'RUNNING_MODAL'}
+
         if event.type == 'X' and ui_props.active_index > -1:
             # delete downloaded files for this asset
             sr = bpy.context.scene['search results']
@@ -1808,11 +1798,12 @@ class UndoWithContext(bpy.types.Operator):
         C_dict = bpy.context.copy()
         C_dict.update(region='WINDOW')
         if context.area is None or context.area.type != 'VIEW_3D':
-            w, a, r = get_largest_3dview()
+            w, a, r = utils.get_largest_area()
             override = {'window': w, 'screen': w.screen, 'area': a, 'region': r}
             C_dict.update(override)
         bpy.ops.ed.undo_push(C_dict, 'INVOKE_REGION_WIN', message=self.message)
         return {'FINISHED'}
+
 
 
 class RunAssetBarWithContext(bpy.types.Operator):
@@ -1826,12 +1817,7 @@ class RunAssetBarWithContext(bpy.types.Operator):
     #     return {'RUNNING_MODAL'}
 
     def execute(self, context):
-        C_dict = bpy.context.copy()
-        C_dict.update(region='WINDOW')
-        if context.area is None or context.area.type != 'VIEW_3D':
-            w, a, r = get_largest_3dview()
-            override = {'window': w, 'screen': w.screen, 'area': a, 'region': r}
-            C_dict.update(override)
+        C_dict = utils.get_fake_context(context)
         bpy.ops.view3d.blenderkit_asset_bar(C_dict, 'INVOKE_REGION_WIN', keep_running=True, do_search=False)
         return {'FINISHED'}
 
@@ -1873,13 +1859,15 @@ def register_ui():
     if not wm.keyconfigs.addon:
         return
     km = wm.keyconfigs.addon.keymaps.new(name="Window", space_type='EMPTY')
+    #asset bar shortcut
     kmi = km.keymap_items.new(AssetBarOperator.bl_idname, 'SEMI_COLON', 'PRESS', ctrl=False, shift=False)
     kmi.properties.keep_running = False
     kmi.properties.do_search = False
     addon_keymapitems.append(kmi)
-    # auto open after searching:
-    kmi = km.keymap_items.new(RunAssetBarWithContext.bl_idname, 'SEMI_COLON', 'PRESS', \
-                              ctrl=True, shift=True, alt=True)
+    #fast rating shortcut
+    wm = bpy.context.window_manager
+    km = wm.keyconfigs.addon.keymaps['Window']
+    kmi = km.keymap_items.new(ratings.FastRateMenu.bl_idname, 'F', 'PRESS', ctrl=False, shift=False)
     addon_keymapitems.append(kmi)
 
 
