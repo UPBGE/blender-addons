@@ -299,6 +299,7 @@ class SaveAsRuntime(bpy.types.Operator):
                 )
     else:
         copy_dlls = False
+        new_icon_path = False
 
     def execute(self, context):
         import time
