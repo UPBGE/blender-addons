@@ -307,17 +307,15 @@ def append_asset(asset_data, **kwargs):  # downloaders=[], location=None,
 
         # copy for override
         al = sprops.append_link
-        import_as = sprops.import_as
         # set consistency for objects already in scene, otherwise this literally breaks blender :)
         ain = asset_in_scene(asset_data)
+
         # override based on history
         if ain is not False:
             if ain == 'LINKED':
                 al = 'LINK'
-                import_as = 'GROUP'
             else:
                 al = 'APPEND'
-                import_as = 'INDIVIDUAL'
 
         # first get conditions for append link
         link = al == 'LINK'
@@ -334,7 +332,7 @@ def append_asset(asset_data, **kwargs):  # downloaders=[], location=None,
                                                        name=asset_data['name'])
                     return
 
-                if sprops.import_as == 'GROUP':
+                if link:
                     parent, newobs = append_link.link_collection(file_names[-1],
                                                                  location=downloader['location'],
                                                                  rotation=downloader['rotation'],
@@ -343,6 +341,7 @@ def append_asset(asset_data, **kwargs):  # downloaders=[], location=None,
                                                                  parent=kwargs.get('parent'))
 
                 else:
+
                     parent, newobs = append_link.append_objects(file_names[-1],
                                                                 location=downloader['location'],
                                                                 rotation=downloader['rotation'],
@@ -356,7 +355,7 @@ def append_asset(asset_data, **kwargs):  # downloaders=[], location=None,
                     parent.empty_display_size = size_min
 
         elif kwargs.get('model_location') is not None:
-            if sprops.import_as == 'GROUP':
+            if link:
                 parent, newobs = append_link.link_collection(file_names[-1],
                                                              location=kwargs['model_location'],
                                                              rotation=kwargs['model_rotation'],
@@ -368,7 +367,10 @@ def append_asset(asset_data, **kwargs):  # downloaders=[], location=None,
                                                             location=kwargs['model_location'],
                                                             rotation=kwargs['model_rotation'],
                                                             link=link,
+                                                            name=asset_data['name'],
                                                             parent=kwargs.get('parent'))
+
+            #scale Empty for assets, so they don't clutter the scene.
             if parent.type == 'EMPTY' and link:
                 bmin = asset_data['bbox_min']
                 bmax = asset_data['bbox_max']
@@ -723,8 +725,8 @@ def try_finished_append(asset_data, **kwargs):  # location=None, material_target
                 for f in file_names:
                     try:
                         os.remove(f)
-                    except:
-                        e = sys.exc_info()[0]
+                    except Exception as e:
+                        # e = sys.exc_info()[0]
                         print(e)
                         pass;
                 done = False
@@ -744,10 +746,12 @@ def asset_in_scene(asset_data):
             asset_data['file_name'] = ad['file_name']
             asset_data['url'] = ad['url']
 
-            c = bpy.data.collections.get(ad['name'])
-            if c is not None:
-                if c.users > 0:
-                    return 'LINKED'
+            #browse all collections since linked collections can have same name.
+            for c in bpy.data.collections:
+                if c.name == ad['name']:
+                    #there can also be more linked collections with same name, we need to check id.
+                    if c.library and c.library.get('asset_data') and c.library['asset_data']['assetBaseId'] == id:
+                        return 'LINKED'
             return 'APPENDED'
     return False
 
@@ -934,7 +938,7 @@ class BlenderkitDownloadOperator(bpy.types.Operator):
 
         if self.replace:  # cleanup first, assign later.
             obs = utils.get_selected_replace_adepts()
-            print(obs)
+            # print(obs)
             for ob in obs:
                 print('replace attempt ', ob.name)
                 if self.asset_base_id != '':

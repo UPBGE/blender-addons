@@ -88,6 +88,8 @@ def append_scene(file_name, scenename=None, link=False, fake_user=False):
 def link_collection(file_name, obnames=[], location=(0, 0, 0), link=False, parent = None, **kwargs):
     '''link an instanced group - model type asset'''
     sel = utils.selection_get()
+    print('link collection')
+    print(kwargs)
 
     with bpy.data.libraries.load(file_name, link=link, relative=True) as (data_from, data_to):
         scols = []
@@ -114,6 +116,12 @@ def link_collection(file_name, obnames=[], location=(0, 0, 0), link=False, paren
             if fp == fp1:
                 main_object.instance_collection = col
                 break;
+
+    #sometimes, the lib might already  be without the actual link.
+    if not main_object.instance_collection and kwargs['name']:
+        col = bpy.data.collections.get(kwargs['name'])
+        if col:
+            main_object.instance_collection = col
 
     main_object.name = main_object.instance_collection.name
 
@@ -181,12 +189,44 @@ def append_particle_system(file_name, obnames=[], location=(0, 0, 0), link=False
 
 def append_objects(file_name, obnames=[], location=(0, 0, 0), link=False, **kwargs):
     '''append objects into scene individually'''
+    #simplified version of append
+    scene = bpy.context.scene
+    sel = utils.selection_get()
+    bpy.ops.object.select_all(action='DESELECT')
+
+    path = file_name + "\\Collection\\"
+    object_name = kwargs.get('name')
+    fc = utils.get_fake_context(bpy.context, area_type='VIEW_3D')
+    bpy.ops.wm.append(fc,filename=object_name, directory=path)
+
+
+    return_obs = []
+    for ob in bpy.context.scene.objects:
+        if ob.select_get():
+            return_obs.append(ob)
+            if not ob.parent:
+                main_object = ob
+                ob.location = location
+
+    if kwargs.get('rotation'):
+        main_object.rotation_euler = kwargs['rotation']
+
+    if kwargs.get('parent') is not None:
+        main_object.parent = bpy.data.objects[kwargs['parent']]
+        main_object.matrix_world.translation = location
+
+    bpy.ops.object.select_all(action='DESELECT')
+    utils.selection_set(sel)
+
+    return main_object, return_obs
 
     with bpy.data.libraries.load(file_name, link=link, relative=True) as (data_from, data_to):
         sobs = []
-        for ob in data_from.objects:
-            if ob in obnames or obnames == []:
-                sobs.append(ob)
+        for col in data_from.collections:
+            if col == kwargs.get('name'):
+                for ob in col.objects:
+                    if ob in obnames or obnames == []:
+                        sobs.append(ob)
         data_to.objects = sobs
         # data_to.objects = data_from.objects#[name for name in data_from.objects if name.startswith("house")]
 
@@ -213,6 +253,7 @@ def append_objects(file_name, obnames=[], location=(0, 0, 0), link=False, **kwar
                     hidden_objects.append(obj)
                     obj.hide_viewport = False
             return_obs.append(obj)
+
     # Only after all objects are in scene! Otherwise gets broken relationships
     if link == True:
         bpy.ops.object.make_local(type='SELECT_OBJECT')
