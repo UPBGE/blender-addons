@@ -526,7 +526,7 @@ def CreateTextureLine(type, act_material, main_mat, texcoat, coat3D, notegroup, 
                 node.image.source = 'TILED'
                 for udim_index in udim_len:
                     if (udim_index != 1001):
-                        image.tiles.new(udim_index)
+                        node.image.tiles.new(udim_index)
 
             node.image.reload()
          
@@ -541,9 +541,7 @@ def CreateTextureLine(type, act_material, main_mat, texcoat, coat3D, notegroup, 
 
         for udim_index in udim_len:
             if (udim_index != 1001):
-                image.tiles.new(udim_index)
-
-  
+                node.image.tiles.new(udim_index)
 
     
     if node.image and type['colorspace'] == 'noncolor':
