@@ -856,6 +856,9 @@ def draw_callback_2d_search(self, context):
             if sr != None and -1 < ui_props.active_index < len(sr):
                 r = sr[ui_props.active_index]
                 tpath = os.path.join(directory, r['thumbnail'])
+                if not r['thumbnail']:
+                    tpath = paths.get_addon_thumbnail_path('thumbnail_not_available.jpg')
+
 
                 img = bpy.data.images.get(iname)
                 if img == None or img.filepath != tpath:
@@ -1021,10 +1024,10 @@ def is_rating_possible():
             while ad is None or (ad is None and ao_check.parent is not None):
                 s = bpy.context.scene
                 ad = ao_check.get('asset_data')
-                if ad is not None:
+                if ad is not None and ad.get('assetBaseId') is not None:
 
                     s['assets rated'] = s.get('assets rated',{})
-                    rated = s['assets rated'].get(ad.get('assetBaseId'))
+                    rated = s['assets rated'].get(ad['assetBaseId'])
                     # originally hidden for already rated assets
                     return True, rated, ao_check, ad
                 elif ao_check.parent is not None:
@@ -1799,7 +1802,7 @@ class UndoWithContext(bpy.types.Operator):
     message: StringProperty('Undo Message', default='BlenderKit operation')
 
     def execute(self, context):
-        C_dict = utils.get_fake_context(context)
+        # C_dict = utils.get_fake_context(context)
         #w, a, r = get_largest_area(area_type=area_type)
         # wm = bpy.context.window_manager#bpy.data.window_managers[0]
         # w = wm.windows[0]
