@@ -21,6 +21,7 @@ import bpy
 import os
 import re
 import json
+from io_coat3D import updateimage
 
 def find_index(objekti):
 
@@ -45,62 +46,6 @@ def RemoveFbxNodes(objekti):
 
     Node_Tree.links.new(Prin_mat.outputs[0], output.inputs[0])
 
-
-def UVTiling(objekti, index, texturelist):
-    """ Checks what Tiles are linked with Material """
-
-    objekti.coat3D.applink_scale = objekti.scale
-    tiles_index = []
-    tile_number =''
-    for poly in objekti.data.polygons:
-        if (poly.material_index == (index)):
-            loop_index = poly.loop_indices[0]
-            uv_x = objekti.data.uv_layers.active.data[loop_index].uv[0]
-            if(uv_x >= 0 and uv_x <=1):
-                tile_number_x = '1'
-            elif (uv_x >= 1 and uv_x <= 2):
-                tile_number_x = '2'
-            elif (uv_x >= 2 and uv_x <= 3):
-                tile_number_x = '3'
-            elif (uv_x >= 3 and uv_x <= 4):
-                tile_number_x = '4'
-            elif (uv_x >= 4 and uv_x <= 5):
-                tile_number_x = '5'
-            elif (uv_x >= 5 and uv_x <= 6):
-                tile_number_x = '6'
-            elif (uv_x >= 6 and uv_x <= 7):
-                tile_number_x = '7'
-            elif (uv_x >= 7 and uv_x <= 8):
-                tile_number_x = '8'
-            elif (uv_x >= 8 and uv_x <= 9):
-                tile_number_x = '9'
-
-            uv_y = objekti.data.uv_layers.active.data[loop_index].uv[1]
-            if (uv_y >= 0 and uv_y <= 1):
-                tile_number_y = '0'
-            elif (uv_y >= 1 and uv_y <= 2):
-                tile_number_y = '1'
-            elif (uv_x >= 2 and uv_y <= 3):
-                tile_number_y = '2'
-            elif (uv_x >= 3 and uv_y <= 4):
-                tile_number_y = '3'
-            elif (uv_x >= 4 and uv_y <= 5):
-                tile_number_y = '4'
-            elif (uv_x >= 5 and uv_y <= 6):
-                tile_number_y = '5'
-            elif (uv_x >= 6 and uv_y <= 7):
-                tile_number_y = '6'
-            elif (uv_x >= 7 and uv_y <= 8):
-                tile_number_y = '7'
-            elif (uv_x >= 8 and uv_y <= 9):
-                tile_number_y = '8'
-
-            tile_number = '10' + tile_number_y + tile_number_x
-
-            if tile_number not in tiles_index:
-                tiles_index.append(tile_number)
-
-    return tiles_index
 
 def updatetextures(objekti): # Update 3DC textures
 
@@ -335,27 +280,38 @@ def createnodes(active_mat,texcoat, create_group_node, objekti, ind, is_new, udi
             act_material = node.node_tree
             applink_tree = node
             break
-
+    
+    
     for node in act_material.nodes:
         if (node.type != 'GROUP'):
             if (node.type != 'GROUP_OUTPUT'):
                 if (node.type == 'TEX_IMAGE'):
                     if (node.name == '3DC_color'):
                         bring_color = False
+                        updateimage.update(texcoat, 'color', node, udim_textures, udim_len)
                     elif (node.name == '3DC_metalness'):
                         bring_metalness = False
+                        updateimage.update(texcoat, 'metalness', node, udim_textures, udim_len)
                     elif (node.name == '3DC_rough'):
                         bring_roughness = False
+                        updateimage.update(texcoat, 'rough', node, udim_textures, udim_len)
                     elif (node.name == '3DC_nmap'):
                         bring_normal = False
+                        updateimage.update(texcoat, 'nmap', node, udim_textures, udim_len)
                     elif (node.name == '3DC_displacement'):
                         bring_displacement = False
+                        updateimage.update(texcoat, 'displacement', node, udim_textures, udim_len)
                     elif (node.name == '3DC_emissive'):
                         bring_emissive = False
+                        updateimage.update(texcoat, 'emissive', node, udim_textures, udim_len)
                     elif (node.name == '3DC_AO'):
                         bring_AO = False
+                        updateimage.update(texcoat, 'ao', node, udim_textures, udim_len)
                     elif (node.name == '3DC_alpha'):
                         bring_alpha = False
+                        updateimage.update(texcoat, 'alpha', node, udim_textures, udim_len)
+
+                    
         elif (node.type == 'GROUP' and node.name.startswith('3DC_')):
             if (node.name == '3DC_color'):
                 bring_color = False
@@ -517,8 +473,8 @@ def CreateTextureLine(type, act_material, main_mat, texcoat, coat3D, notegroup, 
 
     for image in bpy.data.images:
         
-        if(texcoat[type['name']][0] == image.filepath):
-           
+        if(os.path.normpath(texcoat[type['name']][0]) == os.path.normpath(image.filepath)):
+
             load_image = False
             node.image = image
             
@@ -533,8 +489,8 @@ def CreateTextureLine(type, act_material, main_mat, texcoat, coat3D, notegroup, 
             break
 
     if (load_image):
-        
-        node.image = bpy.data.images.load(texcoat[type['name']][0])
+
+        node.image = bpy.data.images.load(os.path.normpath(texcoat[type['name']][0]))
 
         if(udim_textures):
             node.image.source = 'TILED'
@@ -690,15 +646,14 @@ def createExtraNodes(act_material, node, type):
 
 def matlab(objekti,mat_list,texturelist,is_new):
 
-    ''' FBX Materials: remove all nodes and create princibles node'''
+    # FBX Materials: remove all nodes and create princibles node
+
     if(is_new):
         RemoveFbxNodes(objekti)
 
-    '''Main Loop for Texture Update'''
+    updatetextures(objekti) 
 
-    updatetextures(objekti)
-
-    ''' Check if bind textures with UVs or Materials '''
+    # Count udim tiles 
 
     if(texturelist != []):
     
@@ -715,15 +670,11 @@ def matlab(objekti,mat_list,texturelist,is_new):
                 if texture[2] == udim_target:
                     udim_indexs.append(int(texture[0]))
 
-            udim_indexs.sort()
+            udim_indexs.sort() # sort tiles list -> 1001, 1002, 1003...
+        
+        # Main loop for creating nodes
 
-        if(udim_textures == False):
-            readtexturefolder(objekti,mat_list,texturelist,is_new, udim_textures, udim_indexs)
-        else:
-            path = texturelist[0][3]
-            only_name = os.path.basename(path)
-            if(only_name.startswith(objekti.coat3D.applink_index)):
-                readtexturefolder(objekti, mat_list, texturelist, is_new, udim_textures, udim_indexs)
+        readtexturefolder(objekti, mat_list, texturelist, is_new, udim_textures, udim_indexs)
 
 
     return('FINISHED')

@@ -303,8 +303,6 @@ def updatemesh(objekti, proxy, texturelist):
     if(proxy.name.startswith('RetopoGroup')):
         objekti.data = proxy.data
     else:
-        print('objekti: ' + str(len(objekti.data.vertices)))
-        print('proxy: ' + str(len(proxy.data.vertices)))
         for ind, v in enumerate(objekti.data.vertices):
             v.co = proxy.data.vertices[ind].co
 
@@ -642,6 +640,9 @@ class SCENE_OT_export(bpy.types.Operator):
             checkname = folder_objects + os.sep
             checkname = ("%sretopo.fbx" % (checkname))
 
+        elif(coat3D.type == 'update'):
+            checkname = bpy.context.selected_objects[0].coat3D.applink_address
+
         else:
             while(looking == True):
                 checkname = folder_objects + os.sep + "3DC"
@@ -673,6 +674,8 @@ class SCENE_OT_export(bpy.types.Operator):
             os.makedirs(bake_location)
         else:
             os.makedirs(bake_location)
+
+        # BAKING #
 
         temp_string = ''
         for objekti in bpy.context.selected_objects:
@@ -777,6 +780,8 @@ class SCENE_OT_export(bpy.types.Operator):
                                     bpy.data.images.remove(image)
 
                             index_bake_tex += 1
+        
+        #BAKING ENDS
 
         #bpy.ops.object.origin_set(type='ORIGIN_GEOMETRY')
         if(len(bpy.context.selected_objects) > 1 and coat3D.type != 'vox'):
@@ -939,7 +944,7 @@ def new_ref_function(new_applink_address, nimi):
     copymesh.rotation_euler = (0,0,0)
 
 
-def blender_3DC_blender(texturelist):
+def blender_3DC_blender(texturelist, file_applink_address):
     
     coat3D = bpy.context.scene.coat3D
 
@@ -952,18 +957,18 @@ def blender_3DC_blender(texturelist):
     import_type = []
 
     for objekti in bpy.data.objects:
-        if objekti.type == 'MESH':
+        if objekti.type == 'MESH' and objekti.coat3D.applink_address == file_applink_address:
             obj_coat = objekti.coat3D
-            if(obj_coat.applink_mesh == True):
-                object_list.append(objekti.name)
-                if(os.path.isfile(obj_coat.applink_address)):
-                    if (obj_coat.objecttime != str(os.path.getmtime(obj_coat.applink_address))):
-                        obj_coat.dime = objekti.dimensions
-                        obj_coat.import_mesh = True
-                        obj_coat.objecttime = str(os.path.getmtime(obj_coat.applink_address))
-                        if(obj_coat.applink_address not in import_list):
-                            import_list.append(obj_coat.applink_address)
-                            import_type.append(coat3D.type)
+            
+            object_list.append(objekti.name)
+            if(os.path.isfile(obj_coat.applink_address)):
+                if (obj_coat.objecttime != str(os.path.getmtime(obj_coat.applink_address))):
+                    obj_coat.dime = objekti.dimensions
+                    obj_coat.import_mesh = True
+                    obj_coat.objecttime = str(os.path.getmtime(obj_coat.applink_address))
+                    if(obj_coat.applink_address not in import_list):
+                        import_list.append(obj_coat.applink_address)
+                        import_type.append(coat3D.type)
 
     if(import_list or coat3D.importmesh):
         for idx, list in enumerate(import_list):
@@ -1355,7 +1360,7 @@ def workflow1(ExportFolder):
         new_ref_function(new_applink_address, nimi)
 
     else:
-        blender_3DC_blender(texturelist)
+        blender_3DC_blender(texturelist, new_applink_address)
 
 def workflow2(BlenderFolder):
 
@@ -1862,6 +1867,7 @@ class SceneCoat3D(PropertyGroup):
                ("prim", "Mesh As Voxel Primitive", ""),
                ("curv", "Mesh As a Curve Profile", ""),
                ("autopo", "Mesh For Auto-retopology", ""),
+               ("update", "Update mesh/uvs", ""),
                ),
         default="ppp"
     )
