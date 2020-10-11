@@ -64,8 +64,40 @@ bpy.coat3D['active_coat'] = ''
 bpy.coat3D['status'] = 0
 
 initial_settings = True
-time_interval = 2.0
 global_exchange_folder = ''
+liveUpdate = True
+mTime = 0
+
+
+@persistent
+def every_3_seconds():
+
+    global global_exchange_folder
+    global initial_settings
+    global liveUpdate
+    global mTime
+    
+    if(initial_settings):
+        global_exchange_folder = set_exchange_folder()
+        initial_settings = False
+
+    Export_folder  = global_exchange_folder
+    Export_folder += ('%sexport.txt' % (os.sep))
+
+    if  (os.path.isfile(Export_folder) and mTime != os.path.getmtime(Export_folder)):
+
+        for objekti in bpy.data.objects:
+            if(objekti.coat3D.applink_mesh):
+                tex.updatetextures(objekti)
+
+        mTime = os.path.getmtime(Export_folder)
+    
+    return 3.0
+
+@persistent
+def load_handler(dummy):
+    bpy.app.timers.register(every_3_seconds)
+
 
 
 def removeFile(exportfile):
@@ -120,7 +152,7 @@ def set_exchange_folder():
             if(not(os.path.isdir(applink_folder))):
                 os.makedirs(applink_folder)
 
-        if(os.path.isfile(exchange_path) == False):
+        if(os.path.isfile(exchange_path) == False or os.path.getsize(exchange_path) == 0):
 
             file = open(exchange_path, "w")
             file.write("%s"%(exchange_path))
@@ -129,6 +161,7 @@ def set_exchange_folder():
         else:
 
             exchangeline = open(exchange_path)
+            
             for line in exchangeline:
                 source = line
                 break
@@ -339,8 +372,6 @@ class SCENE_OT_getback(bpy.types.Operator):
                 workflow1(ExportFolder)
                 removeFile(Export_folder)
                 removeFile(Blender_folder)    
-                
-            
             
             elif os.path.isfile(Blender_folder):
 
@@ -348,11 +379,8 @@ class SCENE_OT_getback(bpy.types.Operator):
                 DeleteExtra3DC() 
                 workflow2(BlenderFolder)
                 removeFile(Blender_folder)
-        
-    
 
         return {'FINISHED'}
-
 
 class SCENE_OT_folder(bpy.types.Operator):
     bl_idname = "update_exchange_folder.pilgway_3d_coat"
@@ -1138,7 +1166,8 @@ def blender_3DC_blender(texturelist, file_applink_address):
                 objekti.select_set(False)
 
     if(coat3D.remove_path == True):
-        os.remove(path3b_n)
+        if(os.path.isfile(path3b_n)):
+            os.remove(path3b_n)
         coat3D.remove_path = False
 
     bpy.ops.object.select_all(action='DESELECT')
@@ -2071,6 +2100,7 @@ def register():
     bpy.types.Scene.coat3D = PointerProperty(type=SceneCoat3D)
     bpy.types.Mesh.coat3D = PointerProperty(type=MeshCoat3D)
     bpy.types.Material.coat3D = PointerProperty(type=MaterialCoat3D)  
+    bpy.app.handlers.load_post.append(load_handler)
 
     kc = bpy.context.window_manager.keyconfigs.addon
 
