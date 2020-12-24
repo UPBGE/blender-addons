@@ -104,13 +104,12 @@ def get_upload_asset_type(self):
     typemapper = {
         bpy.types.Object.blenderkit: 'model',
         bpy.types.Scene.blenderkit: 'scene',
+        bpy.types.Image.blenderkit: 'hdr',
         bpy.types.Material.blenderkit: 'material',
         bpy.types.Brush.blenderkit: 'brush'
     }
     asset_type = typemapper[type(self)]
     return asset_type
-
-
 
 
 def get_category_enums(self, context):
@@ -122,6 +121,8 @@ def get_category_enums(self, context):
     items = []
     for c in asset_categories['children']:
         items.append((c['slug'], c['name'], c['description']))
+    if len(items) == 0:
+        items.append(('NONE', '', 'no categories on this level defined'))
     return items
 
 def get_subcategory_enums(self, context):
@@ -133,7 +134,9 @@ def get_subcategory_enums(self, context):
         asset_categories = get_category(wm['bkit_categories'], cat_path=(asset_type, self.category,))
         for c in asset_categories['children']:
             items.append((c['slug'], c['name'], c['description']))
-
+    if len(items) == 0:
+        items.append(('NONE', '', 'no categories on this level defined'))
+    # print('subcategory', items)
     return items
 
 def get_subcategory1_enums(self, context):
@@ -145,7 +148,8 @@ def get_subcategory1_enums(self, context):
         asset_categories = get_category(wm['bkit_categories'], cat_path=(asset_type, self.category, self.subcategory, ))
         for c in asset_categories['children']:
             items.append((c['slug'], c['name'], c['description']))
-
+    if len(items) == 0:
+        items.append(('NONE', '', 'no categories on this level defined'))
     return items
 
 def copy_categories():
@@ -174,6 +178,7 @@ def load_categories():
         wm['active_category'] = {
             'MODEL': ['model'],
             'SCENE': ['scene'],
+            'HDR': ['hdr'],
             'MATERIAL': ['material'],
             'BRUSH': ['brush'],
         }
