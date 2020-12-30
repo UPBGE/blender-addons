@@ -25,18 +25,19 @@ jobs:
 
       - name: Update master-BF
         run: |
-          ls -la
-          cd blender-addons
           git checkout master-BF
           git pull --rebase
+
       - name: Merge in master
         run: |
           git checkout master
           git merge -m "Merge branch master-BF" master-BF
+
       - name: Update UPBGE Logic Addon
         run: |
           git submodule update --recursive --remote
           git submodule foreach git pull --rebase origin master
+
       - name: Commit UPBGE Logic Addon
         uses: EndBug/add-and-commit@v6
         with:
