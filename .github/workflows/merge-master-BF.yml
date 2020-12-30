@@ -25,6 +25,7 @@ jobs:
 
       - name: Update master-BF
         run: |
+          ls -la
           cd blender-addons
           git checkout master-BF
           git pull --rebase
