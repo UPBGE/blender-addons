@@ -56,9 +56,12 @@ else:
 import os
 import math
 import time
-# import logging
+import logging
 import bpy
 import pathlib
+
+log = logging.getLogger(__name__)
+
 
 from bpy.app.handlers import persistent
 import bpy.utils.previews
@@ -198,6 +201,12 @@ thumbnail_resolutions = (
     ('2048', '2048', ''),
 )
 
+def udate_down_up(self, context):
+    """Perform a search if results are empty."""
+    s = context.scene
+    props = s.blenderkitUI
+    if s['search results'] == None and props.down_up == 'SEARCH':
+        search.search()
 
 def switch_search_results(self, context):
     s = bpy.context.scene
@@ -225,8 +234,8 @@ def switch_search_results(self, context):
                 'Switch to paint or sculpt mode to search in BlenderKit brushes.')
 
     search.load_previews()
-    if s['search results'] == None:
-        search.search_update(self, context)
+    if s['search results'] == None and props.down_up == 'SEARCH':
+        search.search()
 
 
 
@@ -287,6 +296,7 @@ class BlenderKitUIProps(PropertyGroup):
         ),
         description="BLenderKit",
         default="SEARCH",
+        update = udate_down_up
     )
     asset_type: EnumProperty(
         name="BlenderKit Active Asset Type",
@@ -710,7 +720,7 @@ class BlenderKitRatingProps(PropertyGroup):
     rating_work_hours: FloatProperty(name="Work Hours",
                                      description="How many hours did this work take?",
                                      default=0.00,
-                                     min=0.0, max=1000, update=ratings.update_ratings_work_hours
+                                     min=0.0, max=150, update=ratings.update_ratings_work_hours
                                      )
 
     # rating_complexity: IntProperty(name="Complexity",
@@ -909,8 +919,8 @@ class BlenderKitBrushSearchProps(PropertyGroup, BlenderKitCommonSearchProps):
 
 
 class BlenderKitHDRUploadProps(PropertyGroup, BlenderKitCommonUploadProps):
-    pass;
-
+    texture_resolution_max: IntProperty(name="Texture Resolution Max", description="texture resolution maximum",
+                                        default=0)
 
 class BlenderKitBrushUploadProps(PropertyGroup, BlenderKitCommonUploadProps):
     mode: EnumProperty(

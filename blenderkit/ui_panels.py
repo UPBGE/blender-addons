@@ -115,7 +115,6 @@ def draw_upload_common(layout, props, asset_type, context):
         op.process_type = 'UPLOAD'
         layout = layout.column()
         layout.enabled = False
-
     # if props.upload_state.find('Error') > -1:
     #     layout.label(text = props.upload_state)
 
@@ -887,7 +886,7 @@ class VIEW3D_PT_blenderkit_import_settings(Panel):
     def poll(cls, context):
         s = context.scene
         ui_props = s.blenderkitUI
-        return ui_props.down_up == 'SEARCH' and ui_props.asset_type in ['MATERIAL', 'MODEL']
+        return ui_props.down_up == 'SEARCH' and ui_props.asset_type in ['MATERIAL', 'MODEL', 'HDR']
 
     def draw(self, context):
         layout = self.layout
@@ -916,6 +915,8 @@ class VIEW3D_PT_blenderkit_import_settings(Panel):
             row = layout.row()
 
             row.prop(props, 'append_method', expand=True, icon_only=False)
+        if ui_props.asset_type == 'HDR':
+            props = s.blenderkit_HDR
 
         layout.prop(props, 'resolution')
         # layout.prop(props, 'unpack_files')
@@ -1133,6 +1134,14 @@ def draw_asset_context_menu(self, context, asset_data, from_panel=False):
 
     author_id = str(asset_data['author'].get('id'))
     wm = bpy.context.window_manager
+
+    layout.operator_context = 'INVOKE_DEFAULT'
+
+    op = layout.operator('wm.blenderkit_menu_rating_upload', text='Rate')
+    op.asset_name = asset_data['name']
+    op.asset_id = asset_data['id']
+    op.asset_type = asset_data['assetType']
+
     if wm.get('bkit authors') is not None and author_id is not None:
         a = bpy.context.window_manager['bkit authors'].get(author_id)
         if a is not None:
@@ -1181,7 +1190,8 @@ def draw_asset_context_menu(self, context, asset_data, from_panel=False):
         # if ui_props.asset_type in ('MODEL', 'MATERIAL'):
         #     layout.menu(OBJECT_MT_blenderkit_resolution_menu.bl_idname)
 
-        if ui_props.asset_type in ('MODEL', 'MATERIAL') and \
+
+        if ui_props.asset_type in ('MODEL', 'MATERIAL', 'HDR') and \
                 utils.get_param(asset_data, 'textureResolutionMax') is not None and \
                 utils.get_param(asset_data, 'textureResolutionMax') > 512:
 
@@ -1218,6 +1228,7 @@ def draw_asset_context_menu(self, context, asset_data, from_panel=False):
 
             elif asset_data['assetBaseId'] in s['assets used'].keys():
                 # called from asset bar:
+                print('context menu')
                 op = col.operator('scene.blenderkit_download', text='Replace asset resolution')
 
                 op.asset_index = ui_props.active_index
@@ -1235,7 +1246,7 @@ def draw_asset_context_menu(self, context, asset_data, from_panel=False):
                         op.model_rotation = (0, 0, 0)
                 op.max_resolution = asset_data.get('max_resolution',
                                                    0)  # str(utils.get_param(asset_data, 'textureResolutionMax'))
-
+                print('should be drawn!')
             # print('operator res ', resolution)
             # op.resolution = resolution
 
@@ -1273,13 +1284,9 @@ def draw_asset_context_menu(self, context, asset_data, from_panel=False):
             op.state = 'deleted'
 
         if utils.profile_is_validator():
-            layout.label(text='Admin rating Tools:')
+            layout.label(text='Admin Tools:')
 
-            op = layout.operator('wm.blenderkit_menu_rating_upload', text='Fast rate')
-            op.asset_id = asset_data['id']
-            op.asset_type = asset_data['assetType']
 
-            layout.operator_context = 'INVOKE_DEFAULT'
             op = layout.operator('object.blenderkit_print_asset_debug', text='Print asset debug')
             op.asset_id = asset_data['id']
 
@@ -1338,6 +1345,7 @@ class OBJECT_MT_blenderkit_asset_menu(bpy.types.Menu):
         # sr = bpy.context.scene['search results']
         sr = bpy.context.scene['search results']
         asset_data = sr[ui_props.active_index]
+
         draw_asset_context_menu(self, context, asset_data, from_panel=False)
 
 

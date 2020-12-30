@@ -63,6 +63,9 @@ import copy
 import json
 import math
 
+import logging
+bk_logger = logging.getLogger('blenderkit')
+
 search_start_time = 0
 prev_time = 0
 
@@ -119,7 +122,7 @@ def update_ad(ad):
             ad['author']['id'] = ad['author_id']  # this should stay ONLY for compatibility with older scenes
             ad['canDownload'] = ad['can_download']  # this should stay ONLY for compatibility with older scenes
         except Exception as e:
-            print('BLenderKit failed to update older asset data')
+            bk_logger.error('BLenderKit failed to update older asset data')
     return ad
 
 
@@ -249,9 +252,8 @@ def parse_result(r):
             if f['fileType'].find('resolution') > -1:
                 r['available_resolutions'].append(resolutions.resolutions[f['fileType']])
         r['max_resolution'] = 0
-        if r['available_resolutions']:#should check only for non-empty sequences
+        if r['available_resolutions']:  # should check only for non-empty sequences
             r['max_resolution'] = max(r['available_resolutions'])
-
 
         tooltip = generate_tooltip(r)
         # for some reason, the id was still int on some occurances. investigate this.
@@ -420,7 +422,7 @@ def timer_update():
                 bpy.ops.wm.undo_push_context(message='Get BlenderKit search')
 
             else:
-                print('error', error)
+                bk_logger.error(error)
                 props.report = error
                 props.search_error = True
 
@@ -461,7 +463,11 @@ def load_previews():
                     img.unpack(method='USE_ORIGINAL')
                 img.filepath = tpath
                 img.reload()
-            img.colorspace_settings.name = 'sRGB'
+            if r['assetType'] == 'hdr':
+                # to display hdr thumbnails correctly, we use non-color, otherwise looks shifted
+                img.colorspace_settings.name = 'Non-Color'
+            else:
+                img.colorspace_settings.name = 'sRGB'
 
             i += 1
     # print('previews loaded')
@@ -613,10 +619,12 @@ def generate_tooltip(mdata):
         t += 'texture size: %s\n' % fmt_length(mparams['textureSizeMeters'])
 
     if has(mparams, 'textureResolutionMax') and mparams['textureResolutionMax'] > 0:
-        if mparams['textureResolutionMin'] == mparams['textureResolutionMax']:
+        if not mparams.get('textureResolutionMin'):  # for HDR's
+            t = writeblockm(t, mparams, key='textureResolutionMax', pretext='Resolution', width=col_w)
+        elif mparams.get('textureResolutionMin') == mparams['textureResolutionMax']:
             t = writeblockm(t, mparams, key='textureResolutionMin', pretext='texture resolution', width=col_w)
         else:
-            t += 'tex resolution: %i - %i\n' % (mparams['textureResolutionMin'], mparams['textureResolutionMax'])
+            t += 'tex resolution: %i - %i\n' % (mparams.get('textureResolutionMin'), mparams['textureResolutionMax'])
 
     if has(mparams, 'thumbnailScale'):
         t = writeblockm(t, mparams, key='thumbnailScale', pretext='preview scale', width=col_w)
@@ -638,10 +646,11 @@ def generate_tooltip(mdata):
 
         t = writeblockm(t, mdata, key='isFree', width=col_w)
     else:
-        for f in fs:
-            if f['fileType'].find('resolution')>-1:
-                t+= 'Asset has lower resolutions available\n'
-                break;
+        if fs:
+            for f in fs:
+                if f['fileType'].find('resolution') > -1:
+                    t += 'Asset has lower resolutions available\n'
+                    break;
     # generator is for both upload preview and search, this is only after search
     # if mdata.get('versionNumber'):
     #     # t = writeblockm(t, mdata, key='versionNumber', pretext='version', width = col_w)
@@ -652,6 +661,21 @@ def generate_tooltip(mdata):
     #             t += generate_author_textblock(adata)
 
     # t += '\n'
+    rc = mdata.get('ratingsCount')
+    if utils.profile_is_validator() and rc:
+
+        if rc:
+            rcount = min(rc['quality'], rc['workingHours'])
+        else:
+            rcount = 0
+        if rcount < 10:
+            t += f"Please rate this asset, \nit doesn't have enough ratings.\n"
+        else:
+            t += f"Quality rating: {int(mdata['ratingsAverage']['quality']) * '*'}\n"
+            t += f"Hours saved rating: {int(mdata['ratingsAverage']['workingHours'])}\n"
+        if utils.profile_is_validator():
+            t += f"Ratings count {rc['quality']}*/{rc['workingHours']}wh value " \
+                 f"{mdata['ratingsAverage']['quality']}*/{mdata['ratingsAverage']['workingHours']}wh\n"
     if len(t.split('\n')) < 11:
         t += '\n'
         t += get_random_tip(mdata)
@@ -802,7 +826,7 @@ def get_author(r):
 
 
 def write_profile(adata):
-    utils.p('writing profile')
+    utils.p('writing profile information')
     user = adata['user']
     # we have to convert to MiB here, numbers too big for python int type
     if user.get('sumAssetFilesSize') is not None:
@@ -839,7 +863,7 @@ def fetch_profile(api_key):
         if adata is not None:
             tasks_queue.add_task((write_profile, (adata,)))
     except Exception as e:
-        utils.p(e)
+        bk_logger.error(e)
 
 
 def get_profile():
@@ -937,16 +961,16 @@ class Searcher(threading.Thread):
             reports = ''
             # utils.p(r.text)
         except requests.exceptions.RequestException as e:
-            print(e)
+            bk_logger.error(e)
             reports = e
             # props.report = e
             return
         mt('search response is back ')
         try:
             rdata = r.json()
-        except Exception as inst:
+        except Exception as e:
             reports = r.text
-            print(inst)
+            bk_logger.error(e)
 
         mt('data parsed ')
         if not rdata.get('results'):
@@ -1101,7 +1125,6 @@ def build_query_model():
 
     if props.free_only:
         query["is_free"] = True
-
 
     # if props.search_advanced:
     if props.search_condition != 'UNSPECIFIED':
@@ -1274,6 +1297,7 @@ def get_search_simple(parameters, filepath=None, page_size=100, max_results=1000
         requeststring += f'+{p}:{parameters[p]}'
 
     requeststring += '&page_size=' + str(page_size)
+    bk_logger.debug(requeststring)
     response = rerequests.get(requeststring, headers=headers)  # , params = rparameters)
     # print(r.json())
     search_results = response.json()
@@ -1283,7 +1307,7 @@ def get_search_simple(parameters, filepath=None, page_size=100, max_results=1000
     page_index = 2
     page_count = math.ceil(search_results['count'] / page_size)
     while search_results.get('next') and len(results) < max_results:
-        print(f'getting page {page_index} , total pages {page_count}')
+        bk_logger.info(f'getting page {page_index} , total pages {page_count}')
         response = rerequests.get(search_results['next'], headers=headers)  # , params = rparameters)
         search_results = response.json()
         # print(search_results)
@@ -1295,7 +1319,7 @@ def get_search_simple(parameters, filepath=None, page_size=100, max_results=1000
 
     with open(filepath, 'w') as s:
         json.dump(results, s)
-    print(f'retrieved {len(results)} assets from elastic search')
+    bk_logger.info(f'retrieved {len(results)} assets from elastic search')
     return results
 
 
@@ -1418,7 +1442,7 @@ def search_update(self, context):
         # this complex behaviour is here for the case where the user needs to paste manually into blender?
         sprops = utils.get_search_props()
         sprops.search_keywords = kwds[:ati].rstrip()
-        #return here since writing into search keywords triggers this update function once more.
+        # return here since writing into search keywords triggers this update function once more.
         return
 
     search()
