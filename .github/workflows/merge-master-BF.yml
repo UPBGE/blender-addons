@@ -35,6 +35,7 @@ jobs:
           cd blender-addons
           git remote add blender-addons-BF ../blender-addons-BF
           git pull blender-addons-BF master:master-BF
+          git config pull.rebase false
           git merge -m "Merge branch master-BF" master-BF
 
       - name: Update UPBGE Logic Addon
