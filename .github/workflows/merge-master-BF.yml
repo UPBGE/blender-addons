@@ -32,8 +32,7 @@ jobs:
 
       - name: Merge in master
         run: |
-          ls -la
-          cd ../blender-addons
+          cd blender-addons
           git remote add blender-addons-BF ../blender-addons-BF
           git fetch blender-addons-BF
           git merge -m "Merge branch master-BF" blender-addons-BF/master
