@@ -21,7 +21,6 @@ jobs:
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-      - name: Checkout out blender-addons
       - uses: actions/checkout@v2
 
       - name: Checkout tools blender-addons-BF
@@ -31,8 +30,7 @@ jobs:
           path: blender-addons-BF
 
       - name: Update master-BF
-        run: |
-          git pull --rebase
+        run: git pull --rebase
 
       - name: Merge in master
         run: |
