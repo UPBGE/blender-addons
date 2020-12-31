@@ -1,0 +1,43 @@
+# This is a basic workflow to help you get started with Actions
+name: Update-addons
+
+# Controls when the action will run. 
+on:
+  schedule:
+    # Run every day at 01:00 UTC
+    - cron: "00 01 * * *"
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  # This workflow contains a single job called "update"
+  update:
+    # The type of runner that the job will run on
+    runs-on: ubuntu-latest
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - uses: actions/checkout@v2
+        with:
+          path: ./blender-addons
+          sumodules: true
+
+      - name: Checkout tools blender-addons-BF
+        uses: actions/checkout@v2
+        with:
+          repository: blender/blender-addons
+          path: ./blender-addons-BF
+
+      - name: Configure and merge master-BF branch
+        run: |
+         cd blender-addons
+         git remote add blender-addons-BF ../blender-addons-BF
+         git fetch --unshallow blender-addons-BF
+         git checkout -b master-BF --track blender-addons-BF/master
+         git checkout master
+         git config --global user.email "jbernalmartinez@gmail.com"
+         git config --global user.name "Jorge Bernal"
+         git merge --allow-unrelated-histories -X theirs -m "Merge master-BF into master" master-BF  
