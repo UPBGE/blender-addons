@@ -21,21 +21,18 @@ jobs:
     steps:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v2
-      
-      - name: Go out directory
-        run: cd ../
+        with:
+          path: ./blender-addons
 
       - name: Checkout tools blender-addons-BF
         uses: actions/checkout@v2
         with:
-          repository: git://git.blender.org/blender-addons.git
-          path: blender-addons-BF
-
-      - name: Update master-BF
-        run: git pull --rebase
+          repository: blender/blender-addons
+          path: ./blender-addons-BF
 
       - name: Merge in master
         run: |
+          cd ../blender-addons
           git remote add blender-addons-BF ../blender-addons-BF
           git fetch blender-addons-BF
           git merge -m "Merge branch master-BF" blender-addons-BF/master
