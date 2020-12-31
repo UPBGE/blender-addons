@@ -34,8 +34,10 @@ jobs:
         run: |
           cd blender-addons
           git remote add blender-addons-BF ../blender-addons-BF
-          git fetch --unshallow blender-addons-BF
-          git merge -m "Merge branch master-BF" blender-addons-BF/master
+          git fetch blender-addons-BF
+          git checkout -b master-BF --track blender-addons-BF/master
+          git checkout master
+          git merge --allow-unrelated-histories -m "Merge branch master-BF" master-BF
 
       - name: Update UPBGE Logic Addon
         run: |
