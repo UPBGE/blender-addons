@@ -41,10 +41,10 @@ jobs:
          git config --global user.name "Jorge Bernal"
          git merge --allow-unrelated-histories -X theirs -m "Merge master-BF into master" master-BF      
 
-      - name: Update UPBGE Logic Addon
-        run: |
-          git submodule update --recursive --remote
-          git submodule foreach git pull --rebase origin master
+      - name: Checkout UPBGE Logic Addon submodules
+        uses: textbook/git-checkout-submodule-action@master
+        with:
+          remote: true
 
       - name: Commit UPBGE Logic Addon
         uses: EndBug/add-and-commit@v6
