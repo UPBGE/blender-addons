@@ -39,7 +39,7 @@ jobs:
          git checkout master
          git config --global user.email "jbernalmartinez@gmail.com"
          git config --global user.name "Jorge Bernal"
-         git merge --allow-unrelated-histories -s theirs -m "Merge master-BF into master" master-BF      
+         git merge --allow-unrelated-histories -X theirs -m "Merge master-BF into master" master-BF      
 
       - name: Update UPBGE Logic Addon
         run: |
