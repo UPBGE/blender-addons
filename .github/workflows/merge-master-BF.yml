@@ -24,29 +24,22 @@ jobs:
         with:
           path: ./blender-addons
 
-#      - name: Checkout tools blender-addons-BF
-#        uses: actions/checkout@v2
-#        with:
-#          repository: blender/blender-addons
-#          path: ./blender-addons-BF
+      - name: Checkout tools blender-addons-BF
+        uses: actions/checkout@v2
+        with:
+          repository: blender/blender-addons
+          path: ./blender-addons-BF
 
       - name: Configure and merge master-BF branch
         run: |
-         git remote add remote add origin-BF git://git.blender.org/blender-addons.git
-         git fetch origin-BF
-         git checkout -b master-BF --track origin-BF/master
+         cd blender-addons
+         git remote add blender-addons-BF ../blender-addons-BF
+         git fetch --unshallow blender-addons-BF
+         git checkout -b master-BF --track blender-addons-BF/master
          git checkout master
          git config --global user.email "jbernalmartinez@gmail.com"
          git config --global user.name "Jorge Bernal"
-         git merge -m "Merge branch master-BF" master-BF
-         
-#          cd blender-addons
-#          git remote add blender-addons-BF ../blender-addons-BF
-#          git fetch --unshallow blender-addons-BF
-#          git checkout -b master-BF --track blender-addons-BF/master
-#          git checkout master
-#          git merge --allow-unrelated-histories -m "Merge master-BF into master" master-BF
-
+         git merge --allow-unrelated-histories -m "Merge master-BF into master" master-BF      
 
       - name: Update UPBGE Logic Addon
         run: |
