@@ -37,14 +37,14 @@ jobs:
           git fetch --unshallow blender-addons-BF
           git checkout -b master-BF --track blender-addons-BF/master
           git checkout master
-          
-      - name: Merge master-BF -> master
-        uses: devmasx/merge-branch@v1.3.1
+
+      - name: Merge master-bf -> master
+        uses: everlytic/branch-merge@1.1.0
         with:
-          type: now
-          from_branch: master-BF
-          target_branch: master
           github_token: ${{ github.token }}
+          source_ref: 'master-BF'
+          target_branch: 'master'
+          commit_message_template: '[Automated] Merged {source_ref} into target {target_branch}'
 
       - name: Update UPBGE Logic Addon
         run: |
