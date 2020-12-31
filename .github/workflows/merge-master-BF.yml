@@ -21,17 +21,25 @@ jobs:
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - name: Checkout out blender-addons
       - uses: actions/checkout@v2
+
+      - name: Checkout tools blender-addons-BF
+      - uses: actions/checkout@v2
+        with:
+          repository: git://git.blender.org/blender-addons.git
+          path: blender-addons-BF
 
       - name: Update master-BF
         run: |
-          git checkout master-BF
           git pull --rebase
 
       - name: Merge in master
         run: |
-          git checkout master
-          git merge -m "Merge branch master-BF" master-BF
+          cd ../blender-addons
+          git remote add blender-addons-BF ../blender-addons-BF
+          git fetch blender-addons-BF
+          git merge -m "Merge branch master-BF" blender-addons-BF/master
 
       - name: Update UPBGE Logic Addon
         run: |
