@@ -37,7 +37,6 @@ jobs:
           git fetch --unshallow blender-addons-BF
           git checkout -b master-BF --track blender-addons-BF/master
           git checkout master
-          git merge --allow-unrelated-histories -m "Merge branch master-BF" master-BF
           
       - name: Merge master-BF -> master
         uses: devmasx/merge-branch@v1.3.1
