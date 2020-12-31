@@ -30,7 +30,7 @@ jobs:
           repository: blender/blender-addons
           path: ./blender-addons-BF
 
-      - name: Merge in master
+      - name: Configure master-BF branch
         run: |
           cd blender-addons
           git remote add blender-addons-BF ../blender-addons-BF
@@ -38,6 +38,14 @@ jobs:
           git checkout -b master-BF --track blender-addons-BF/master
           git checkout master
           git merge --allow-unrelated-histories -m "Merge branch master-BF" master-BF
+          
+      - name: Merge master-BF -> master
+        uses: devmasx/merge-branch@v1.3.1
+        with:
+          type: now
+          from_branch: master-BF
+          target_branch: master
+          github_token: ${{ github.token }}
 
       - name: Update UPBGE Logic Addon
         run: |
