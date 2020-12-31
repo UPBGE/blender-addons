@@ -26,7 +26,7 @@ jobs:
         run: cd ../
 
       - name: Checkout tools blender-addons-BF
-      - uses: actions/checkout@v2
+        uses: actions/checkout@v2
         with:
           repository: git://git.blender.org/blender-addons.git
           path: blender-addons-BF
