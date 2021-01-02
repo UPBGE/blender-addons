@@ -3,9 +3,9 @@ name: Update-addons
 
 # Controls when the action will run. 
 on:
-  schedule:
+  #schedule:
     # Run every day at 01:00 UTC
-    - cron: "00 01 * * *"
+    #- cron: "* * */2 * *"
 
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
