@@ -198,6 +198,15 @@ def WriteRuntime(player_path, output_path, new_icon_path, copy_python, overwrite
         src = os.path.join(blender_dir, scripts_folder)
         dst = os.path.join(runtime_dir, scripts_folder)
         shutil.copytree(src, dst)
+        print("\ndone")
+        print("\nCopying userpref.blend to can use addons...", end=" ")
+        user_path = bpy.utils.resource_path('USER')
+        user_config_path = os.path.join(user_path, "config")
+        user_config_userpref_path = os.path.join(user_config_path, "userpref.blend")
+        runtime_config_folder = os.path.join(version_string, "config")
+        runtime_config_folder_path = os.path.join(runtime_dir, runtime_config_folder)
+        os.makedirs(runtime_config_folder_path)
+        shutil.copy2(user_config_userpref_path, runtime_config_folder_path)
         print("done")
 
     # And copy datafiles folder
