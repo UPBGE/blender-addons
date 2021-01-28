@@ -345,9 +345,9 @@ def draw_panel_model_search(self, context):
     if props.report == 'You need Full plan to get this item.':
         layout.operator("wm.url_open", text="Get Full plan", icon='URL').url = paths.BLENDERKIT_PLANS
 
-    layout.prop(props, "search_style")
-    layout.prop(props, "own_only")
-    layout.prop(props, "free_only")
+    # layout.prop(props, "search_style")
+    # layout.prop(props, "own_only")
+    # layout.prop(props, "free_only")
 
     # if props.search_style == 'OTHER':
     #     layout.prop(props, "search_style_other")
@@ -669,7 +669,6 @@ def draw_panel_material_search(self, context):
     row = layout.row()
     row.prop(props, "search_keywords", text="", icon='VIEWZOOM')
     draw_assetbar_show_hide(row, props)
-    layout.prop(props, "own_only")
     utils.label_multiline(layout, text=props.report)
 
     # layout.prop(props, 'search_style')F
@@ -775,36 +774,41 @@ class VIEW3D_PT_blenderkit_advanced_model_search(Panel):
         # if props.search_engine == 'OTHER':
         #     layout.prop(props, "search_engine_keyword")
 
-        # AGE
-        layout.prop(props, "search_condition", text='Condition')  # , text ='condition of object new/old e.t.c.')
+        layout.prop(props, "own_only")
+        layout.prop(props, "free_only")
+        layout.prop(props, "search_style")
+
 
         # DESIGN YEAR
-        layout.prop(props, "search_design_year", text='designed in ( min - max )')
+        layout.prop(props, "search_design_year", text='Designed in Year')
         if props.search_design_year:
             row = layout.row(align=True)
-            row.prop(props, "search_design_year_min", text='min')
-            row.prop(props, "search_design_year_max", text='max')
+            row.prop(props, "search_design_year_min", text='Min')
+            row.prop(props, "search_design_year_max", text='Max')
 
         # POLYCOUNT
-        layout.prop(props, "search_polycount", text='Poly count in ( min - max )')
+        layout.prop(props, "search_polycount", text='Poly Count ')
         if props.search_polycount:
             row = layout.row(align=True)
-            row.prop(props, "search_polycount_min", text='min')
-            row.prop(props, "search_polycount_max", text='max')
+            row.prop(props, "search_polycount_min", text='Min')
+            row.prop(props, "search_polycount_max", text='Max')
 
         # TEXTURE RESOLUTION
-        layout.prop(props, "search_texture_resolution", text='texture resolution ( min - max )')
+        layout.prop(props, "search_texture_resolution", text='Texture Resolutions')
         if props.search_texture_resolution:
             row = layout.row(align=True)
-            row.prop(props, "search_texture_resolution_min", text='min')
-            row.prop(props, "search_texture_resolution_max", text='max')
+            row.prop(props, "search_texture_resolution_min", text='Min')
+            row.prop(props, "search_texture_resolution_max", text='Max')
 
         # FILE SIZE
-        layout.prop(props, "search_file_size", text='File size ( min - max MB)')
+        layout.prop(props, "search_file_size", text='File Size (MB)')
         if props.search_file_size:
             row = layout.row(align=True)
-            row.prop(props, "search_file_size_min", text='min')
-            row.prop(props, "search_file_size_max", text='max')
+            row.prop(props, "search_file_size_min", text='Min')
+            row.prop(props, "search_file_size_max", text='Max')
+
+        # AGE
+        layout.prop(props, "search_condition", text='Condition')  # , text ='condition of object new/old e.t.c.')
 
         # layout.prop(props, "search_procedural", expand=True)
         # ADULT
@@ -833,24 +837,26 @@ class VIEW3D_PT_blenderkit_advanced_material_search(Panel):
         layout = self.layout
         layout.separator()
 
-        layout.label(text='texture types')
+        layout.prop(props, "own_only")
+
+        layout.label(text='Texture:')
         col = layout.column()
         col.prop(props, "search_procedural", expand=True)
 
         if props.search_procedural == 'TEXTURE_BASED':
             # TEXTURE RESOLUTION
-            layout.prop(props, "search_texture_resolution", text='texture resolution ( min - max )')
+            layout.prop(props, "search_texture_resolution", text='Texture Resolution')
             if props.search_texture_resolution:
                 row = layout.row(align=True)
-                row.prop(props, "search_texture_resolution_min", text='min')
-                row.prop(props, "search_texture_resolution_max", text='max')
+                row.prop(props, "search_texture_resolution_min", text='Min')
+                row.prop(props, "search_texture_resolution_max", text='Max')
 
         # FILE SIZE
-        layout.prop(props, "search_file_size", text='File size ( min - max MB)')
+        layout.prop(props, "search_file_size", text='File size (MB)')
         if props.search_file_size:
             row = layout.row(align=True)
-            row.prop(props, "search_file_size_min", text='min')
-            row.prop(props, "search_file_size_max", text='max')
+            row.prop(props, "search_file_size_min", text='Min')
+            row.prop(props, "search_file_size_max", text='Max')
 
 
 class VIEW3D_PT_blenderkit_categories(Panel):
@@ -1592,9 +1598,9 @@ def draw_panel_categories(self, context):
     #     op.free_only = True
 
     for c in cats['children']:
-        if c['assetCount'] > 0:
+        if c['assetCount'] > 0 or utils.profile_is_validator():
             row = col.row(align=True)
-            if len(c['children']) > 0 and c['assetCount'] > 15:
+            if len(c['children']) > 0 and c['assetCount'] > 15 or utils.profile_is_validator():
                 row = row.split(factor=.8, align=True)
             # row = split.split()
             ctext = '%s (%i)' % (c['name'], c['assetCount'])
@@ -1608,7 +1614,7 @@ def draw_panel_categories(self, context):
                 op.keep_running = True
                 op.category = c['slug']
             # TODO enable subcategories, now not working due to some bug on server probably
-            if len(c['children']) > 0 and c['assetCount'] > 15:
+            if len(c['children']) > 0 and c['assetCount'] > 15 or utils.profile_is_validator():
                 # row = row.split()
                 op = row.operator('view3d.blenderkit_set_category', text='>>')
                 op.asset_type = ui_props.asset_type

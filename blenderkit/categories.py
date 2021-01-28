@@ -106,6 +106,18 @@ def get_category(categories, cat_path=()):
 #     asset_type = typemapper[type(self)]
 #     return asset_type
 
+def update_category_enums(self,context):
+    '''Fixes if lower level is empty - sets it to None, because enum value can be higher.'''
+    enums = get_subcategory_enums(self,context)
+    if enums[0][0] == 'NONE' and self.subcategory != 'NONE':
+        self.subcategory = 'NONE'
+
+def update_subcategory_enums(self,context):
+    '''Fixes if lower level is empty - sets it to None, because enum value can be higher.'''
+    enums = get_subcategory1_enums(self,context)
+    if enums[0][0] == 'NONE' and self.subcategory1 != 'NONE':
+        self.subcategory1 = 'NONE'
+
 
 def get_category_enums(self, context):
     wm = bpy.context.window_manager
@@ -168,7 +180,7 @@ def load_categories():
 
     wm = bpy.context.window_manager
     try:
-        with open(categories_filepath, 'r') as catfile:
+        with open(categories_filepath, 'r', encoding='utf-8') as catfile:
             wm['bkit_categories'] = json.load(catfile)
 
         wm['active_category'] = {
@@ -192,7 +204,10 @@ def fetch_categories(API_key, force = False):
 
     tempdir = paths.get_temp_dir()
     categories_filepath = os.path.join(tempdir, 'categories.json')
-    catfile_age = time.time() - os.path.getmtime(categories_filepath)
+    if os.path.exists(categories_filepath):
+        catfile_age = time.time() - os.path.getmtime(categories_filepath)
+    else:
+        catfile_age = 10000000
 
     # global catfetch_counter
     # catfetch_counter += 1
@@ -207,8 +222,8 @@ def fetch_categories(API_key, force = False):
             categories = rdata['results']
             fix_category_counts(categories)
             # filter_categories(categories) #TODO this should filter categories for search, but not for upload. by now off.
-            with open(categories_filepath, 'w') as s:
-                json.dump(categories, s, indent=4)
+            with open(categories_filepath, 'w', encoding = 'utf-8') as s:
+                json.dump(categories, s,  ensure_ascii=False, indent=4)
         tasks_queue.add_task((load_categories, ()))
     except Exception as e:
         bk_logger.debug('category fetching failed')
