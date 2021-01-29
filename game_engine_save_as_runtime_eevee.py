@@ -40,7 +40,7 @@ import subprocess
 def CopyPythonLibs(dst, overwrite_lib, report=print):
     import platform
 
-    # use python module to find pytohn's libpath
+    # use python module to find python's libpath
     src = os.path.dirname(platform.__file__)
 
     # dst points to lib/, but src points to current python's library path, eg:
@@ -61,7 +61,7 @@ def CopyPythonLibs(dst, overwrite_lib, report=print):
         if write:
             shutil.copytree(src, dst, ignore=lambda dir, contents: [i for i in contents if i == '__pycache__'])
     else:
-        report({'WARNING'}, "Python not found in %r, skipping pythn copy" % src)
+        report({'WARNING'}, "Python not found in %r, skipping python copy" % src)
 
 
 def WriteAppleRuntime(player_path, output_path, copy_python, overwrite_lib):
@@ -248,7 +248,6 @@ class SaveAsRuntime(bpy.types.Operator):
     bl_options = {'REGISTER'}
 
     if sys.platform == 'darwin':
-        # XXX, this line looks suspicious, could be done better?
         blender_bin_dir = '/' + os.path.join(*bpy.app.binary_path.split('/')[0:-4])
         ext = '.app'
         blenderplayer_name = 'Blenderplayer'
@@ -326,7 +325,7 @@ class SaveAsRuntime(bpy.types.Operator):
                      self.copy_modules,
                      self.report,
                      )
-        print("Finished in %.4fs" % (time.time()-start_time))
+        print("Finished in %.4fs" % (time.time() - start_time))
         return {'FINISHED'}
 
     def invoke(self, context, event):
