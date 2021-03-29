@@ -2,3 +2,6 @@
 	path = bge_netlogic
 	url = https://github.com/IzaZed/Uchronian-Logic-UPBGE-Logic-Nodes.git
 	branch = master
+[submodule "thelightmapper"]
+	path = thelightmapper
+	url = https://github.com/lordloki/The_Lightmapper.git
