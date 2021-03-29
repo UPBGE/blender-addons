@@ -18,8 +18,8 @@
 
 bl_info = {
     "name": "Save As Game Engine Runtime",
-    "author": "Mitchell Stokes (Moguri)",
-    "version": (0, 3, 1),
+    "author": "Mitchell Stokes (Moguri), Ulysse Martin (youle), Jorge Bernal (lordloki)",
+    "version": (0, 9, 0),
     "blender": (2, 80, 0),
     "location": "File > Import-Export",
     "description": "Bundle a .blend file with the Blenderplayer",
@@ -81,7 +81,7 @@ def WriteAppleRuntime(player_path, output_path, copy_python, overwrite_lib):
     # Python doesn't need to be copied for OS X since it's already inside blenderplayer.app
 
 
-def WriteRuntime(player_path, output_path, new_icon_path, copy_python, overwrite_lib, copy_dlls, copy_scripts, copy_datafiles, copy_modules, report=print):
+def WriteRuntime(player_path, output_path, new_icon_path, copy_python, overwrite_lib, copy_dlls, copy_scripts, copy_datafiles, copy_modules, copy_logic_nodes, report=print):
     import struct
 
     # Check the paths
@@ -101,7 +101,7 @@ def WriteRuntime(player_path, output_path, new_icon_path, copy_python, overwrite
     # Setup main folders
     blender_dir = os.path.dirname(bpy.app.binary_path)
     runtime_dir = os.path.dirname(output_path)
-    
+
     # Extract new version string. Only take first 4 digits (i.e 2.90)
     string = bpy.app.version_string.split()[0]
     version_string = string[:4]
@@ -109,7 +109,7 @@ def WriteRuntime(player_path, output_path, new_icon_path, copy_python, overwrite
     # Create temporal directory
     tempdir = tempfile.mkdtemp()
     player_path_temp = player_path
-    
+
     # Change the icon for Windows
     if (new_icon_path != '' and output_path.endswith('.exe')):
         player_path_temp = os.path.join(tempdir, bpy.path.clean_name(player_path))
@@ -117,13 +117,13 @@ def WriteRuntime(player_path, output_path, new_icon_path, copy_python, overwrite
         rcedit_folder = os.path.join(version_string, "rceditcustom")
         rcedit_path = os.path.join(blender_dir, rcedit_folder, "rcedit-x64.exe")
         subprocess.check_call([rcedit_path, player_path_temp, "--set-icon", new_icon_path])
-        
+
     # Get the player's binary and the offset for the blend
     file = open(player_path_temp, 'rb')
     player_d = file.read()
     offset = file.tell()
     file.close()
-        
+
     # Create a tmp blend file (Blenderplayer doesn't like compressed blends)
     blend_path = os.path.join(tempdir, bpy.path.clean_name(output_path))
     bpy.ops.wm.save_as_mainfile(filepath=blend_path,
@@ -166,7 +166,7 @@ def WriteRuntime(player_path, output_path, new_icon_path, copy_python, overwrite
     # Make the runtime executable on Linux
     if os.name == 'posix':
         os.chmod(output_path, 0o755)
-    
+
     if copy_python:
         print("Copying Python files...", end=" ")
         py_folder = os.path.join(version_string, "python", "lib")
@@ -191,8 +191,8 @@ def WriteRuntime(player_path, output_path, new_icon_path, copy_python, overwrite
         shutil.copytree(src, dst)
         print("done")
 
-    # Copy Scripts folder
-    if copy_scripts:
+    # Copy Scripts folder (also copy this folder when logic nodes option is selected)
+    if copy_scripts or copy_logic_nodes:
         print("Copying scripts and modules...", end=" ")
         scripts_folder = os.path.join(version_string, "scripts")
         src = os.path.join(blender_dir, scripts_folder)
@@ -209,7 +209,15 @@ def WriteRuntime(player_path, output_path, new_icon_path, copy_python, overwrite
         shutil.copy2(user_config_userpref_path, runtime_config_folder_path)
         print("done")
 
-    # And copy datafiles folder
+    # Copy logic nodes game folder
+    if copy_logic_nodes:
+        print("Copying logic nodes game folder...", end=" ")
+        src = os.path.join(blender_dir, "bgelogic")
+        dst = os.path.join(runtime_dir, "bgelogic")
+        shutil.copytree(src, dst)
+        print("done")
+
+    # Copy datafiles folder
     if copy_datafiles:
         print("Copying datafiles...", end=" ")
         datafiles_folder = os.path.join(version_string, "datafiles", "gamecontroller")
@@ -231,13 +239,20 @@ def WriteRuntime(player_path, output_path, new_icon_path, copy_python, overwrite
         print("done")
 
     # Copy modules folder (to have bpy working)
-    if copy_modules and not copy_scripts:
+    if copy_modules and not (copy_scripts or copy_logic_nodes):
         print("Copying modules...", end=" ")
         modules_folder = os.path.join(version_string, "scripts", "modules")
         src = os.path.join(blender_dir, modules_folder)
         dst = os.path.join(runtime_dir, modules_folder)
         shutil.copytree(src, dst)
         print("done")
+
+    # Copy license folder
+    print("Copying UPBGE license folder...", end=" ")
+    src = os.path.join(blender_dir, "license")
+    dst = os.path.join(runtime_dir, "license")
+    shutil.copytree(src, dst)
+    print("done")
 
 from bpy.props import *
 
@@ -292,6 +307,11 @@ class SaveAsRuntime(bpy.types.Operator):
             description="Copy bundle modules folder with the runtime",
             default=True,
             )
+    copy_logic_nodes: BoolProperty(
+            name="Copy Logic Nodes game folder",
+            description="Copy Logic Nodes game with the runtime",
+            default=False,
+            )
 
     # Only Windows has dlls to copy or can modify icon
     if ext == '.exe':
@@ -323,6 +343,7 @@ class SaveAsRuntime(bpy.types.Operator):
                      self.copy_scripts,
                      self.copy_datafiles,
                      self.copy_modules,
+                     self.copy_logic_nodes,
                      self.report,
                      )
         print("Finished in %.4fs" % (time.time() - start_time))
