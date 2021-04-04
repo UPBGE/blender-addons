@@ -212,9 +212,11 @@ def WriteRuntime(player_path, output_path, new_icon_path, copy_python, overwrite
     # Copy logic nodes game folder
     if copy_logic_nodes:
         print("Copying logic nodes game folder...", end=" ")
-        src = os.path.join(blender_dir, "bgelogic")
-        dst = os.path.join(runtime_dir, "bgelogic")
-        shutil.copytree(src, dst)
+        blend_directory = os.path.dirname(bpy.data.filepath)
+        src = os.path.join(blend_directory, "bgelogic")
+        if os.path.exists(src):
+            dst = os.path.join(runtime_dir, "bgelogic")
+            shutil.copytree(src, dst)
         print("done")
 
     # Copy datafiles folder
