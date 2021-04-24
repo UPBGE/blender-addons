@@ -6,3 +6,6 @@
 	path = thelightmapper
 	url = https://github.com/lordloki/The_Lightmapper.git
 	branch = master
+[submodule "EasyOnline"]
+	path = EasyOnline
+	url = https://github.com/lordloki/EasyOnline.git
