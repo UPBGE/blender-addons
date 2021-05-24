@@ -102,9 +102,9 @@ def WriteRuntime(player_path, output_path, new_icon_path, copy_python, overwrite
     blender_dir = os.path.dirname(bpy.app.binary_path)
     runtime_dir = os.path.dirname(output_path)
 
-    # Extract new version string. Only take first 4 digits (i.e 2.90)
+    # Extract new version string. Only take first 3 digits (i.e 3.0)
     string = bpy.app.version_string.split()[0]
-    version_string = string[:4]
+    version_string = string[:3]
 
     # Create temporal directory
     tempdir = tempfile.mkdtemp()
