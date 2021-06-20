@@ -3,9 +3,9 @@
 	url = https://github.com/IzaZed/Uchronian-Logic-UPBGE-Logic-Nodes.git
 	branch = master
 [submodule "thelightmapper"]
-	path = thelightmapper
+	path = bge_thelightmapper
 	url = https://github.com/lordloki/The_Lightmapper.git
 	branch = master
 [submodule "EasyOnline"]
-	path = EasyOnline
+	path = bge_easyonline
 	url = https://github.com/lordloki/EasyOnline.git
