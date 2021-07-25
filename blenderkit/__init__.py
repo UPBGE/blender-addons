@@ -19,7 +19,7 @@
 bl_info = {
     "name": "BlenderKit Online Asset Library",
     "author": "Vilem Duha, Petr Dlouhy",
-    "version": (2, 93, 0),
+    "version": (3, 0, 0),
     "blender": (2, 93, 0),
     "location": "View3D > Properties > BlenderKit",
     "description": "Online BlenderKit library (materials, models, brushes and more). Connects to the internet.",
@@ -141,8 +141,6 @@ from bpy.types import (
 
 @persistent
 def scene_load(context):
-    if not bpy.app.background:
-        search.load_previews()
     ui_props = bpy.context.scene.blenderkitUI
     ui_props.assetbar_on = False
     ui_props.turn_off = False
@@ -304,7 +302,19 @@ def asset_type_callback(self, context):
     return items
 
 
+def run_drag_drop_update(self, context):
+    if self.drag_init_button:
+        ui_props = bpy.context.scene.blenderkitUI
+        # ctx = utils.get_fake_context(bpy.context)
+
+        bpy.ops.view3d.close_popup_button('INVOKE_DEFAULT')
+        bpy.ops.view3d.asset_drag_drop('INVOKE_DEFAULT', asset_search_index=ui_props.active_index + ui_props.scrolloffset)
+
+        self.drag_init_button = False
+
+
 class BlenderKitUIProps(PropertyGroup):
+
     down_up: EnumProperty(
         name="Download vs Upload",
         items=(
@@ -370,6 +380,10 @@ class BlenderKitUIProps(PropertyGroup):
 
     dragging: BoolProperty(name="Dragging", default=False)
     drag_init: BoolProperty(name="Drag Initialisation", default=False)
+    drag_init_button: BoolProperty(name="Drag Initialisation from button",
+                                   default=False,
+                                   description="Click or drag into scene for download.",
+                                   update = run_drag_drop_update)
     drag_length: IntProperty(name="Drag length", default=0)
     draw_drag_image: BoolProperty(name="Draw Drag Image", default=False)
     draw_snapped_bounds: BoolProperty(name="Draw Snapped Bounds", default=False)
@@ -445,8 +459,8 @@ class BlenderKitCommonSearchProps(object):
                               default=False)
     own_only: BoolProperty(name="My Assets Only", description="Search only for your assets",
                            default=False, update=search.search_update)
-    search_advanced: BoolProperty(name="Advanced Search Options", description="use advanced search properties",
-                                  default=False, update=search.search_update)
+    use_filters: BoolProperty(name="Filters are on", description="some filters are used",
+                                  default=False)
 
     search_error: BoolProperty(name="Search Error", description="last search had an error", default=False)
     report: StringProperty(
@@ -555,6 +569,10 @@ class BlenderKitCommonSearchProps(object):
 
     unrated_only: BoolProperty(name="Unrated only", description="Show only unrated models",
                                default=False, update=search.search_update)
+    quality_limit: IntProperty(name="Quality limit",
+                               description = 'Only show assets with a higher quality',
+                               default=0, min=0, max=10, update=search.search_update)
+
 
 
 def name_update(self, context):
