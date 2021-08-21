@@ -112,11 +112,6 @@ class BNConvertBricks(bpy.types.Operator):
                     available_bricks[c] = controller
                     controller.hide = True
                     controller.label = c.name
-                    # for a in c.actuators:
-                    #     if a in available_bricks:
-                    #         tree.links.new(available_bricks[a].inputs[0], available_bricks[c].outputs[0])
-                    #     else:
-                    #         leftover_bricks[a] = c
             for s in obj.game.sensors:
                 if s not in available_bricks:
                     added += 1
@@ -129,11 +124,6 @@ class BNConvertBricks(bpy.types.Operator):
                     available_bricks[s] = sensor
                     sensor.hide = True
                     sensor.label = s.name
-                    # for c in s.controllers:
-                    #     if c in available_bricks:
-                    #         tree.links.new(available_bricks[c].inputs[0], available_bricks[s].outputs[0])
-                    #     else:
-                    #         leftover_bricks[c] = s
                 s_y -= 40
             
             if offstep < 2:
@@ -163,57 +153,6 @@ class BNConvertBricks(bpy.types.Operator):
         return {'FINISHED'}
 
 
-class NLAddPropertyOperator(bpy.types.Operator):
-    bl_idname = "bricknodes.add_game_prop"
-    bl_label = "Add Game Property"
-    bl_options = {'REGISTER', 'UNDO'}
-    bl_description = "Adds a property available to the UPBGE"
-
-    @classmethod
-    def poll(cls, context):
-        return True
-
-    def execute(self, context):
-        bpy.ops.object.game_property_new()
-        return {'FINISHED'}
-
-
-class NLMovePropertyOperator(bpy.types.Operator):
-    bl_idname = "bricknodes.move_game_prop"
-    bl_label = "Move Game Property"
-    bl_description = "Move Game Property"
-    bl_options = {'REGISTER', 'UNDO'}
-    index: bpy.props.IntProperty()
-    direction: bpy.props.StringProperty()
-
-    @classmethod
-    def poll(cls, context):
-        return True
-
-    def execute(self, context):
-        bpy.ops.object.game_property_move(
-            index=self.index,
-            direction=self.direction
-        )
-        return {'FINISHED'}
-
-
-class NLRemovePropertyOperator(bpy.types.Operator):
-    bl_idname = "bricknodes.remove_game_prop"
-    bl_label = "Add Game Property"
-    bl_description = "Remove this property"
-    bl_options = {'REGISTER', 'UNDO'}
-    index: bpy.props.IntProperty()
-
-    @classmethod
-    def poll(cls, context):
-        return True
-
-    def execute(self, context):
-        bpy.ops.object.game_property_remove(index=self.index)
-        return {'FINISHED'}
-
-
 class BNDuplicateBrick(bpy.types.Operator):
     """Duplicate this brick"""
     bl_idname = "bricknodes.duplicate_brick"
@@ -222,7 +161,9 @@ class BNDuplicateBrick(bpy.types.Operator):
 
     def execute(self, context):
         n = context.node
+        old_brick = n.get_brick()
         tree = context.space_data.edit_tree
+        active = bpy.context.object
         brick = n.get_brick()
         scene = bpy.context.scene
         if not n.target_object:
@@ -243,8 +184,152 @@ class BNDuplicateBrick(bpy.types.Operator):
             bpy.ops.logic.actuator_add(type=brick.type)
             new_brick = context.object.game.actuators[-1]
         
+        
         n.target_brick = new_brick.name
+        for attr in dir(old_brick):
+            if (
+                attr.startswith('__') or
+                attr.startswith('rna_') or
+                attr.startswith('bl_') or
+                callable(attr) or
+                attr == 'name'
+            ):
+                print(f'Skipping {attr}')
+                continue
+            print(f'Trying {attr}: {getattr(old_brick, attr)} on {old_brick.name} to {new_brick.name}')
+            try:
+                setattr(new_brick, attr, getattr(old_brick, attr))
+            except Exception as e:
+                print(f'Failed {attr}: {e}')
+                continue
+        bpy.context.view_layer.objects.active = active
+        active.select_set(True)
         return {'FINISHED'}
+    
+    def copy_contents(self):
+        attrs = [
+            'active',
+            'use_pulse_true_level',
+            'use_pulse_false_level',
+            'tick_skip',
+            'use_level',
+            'use_tap',
+            'invert',
+            'actuator',
+            'use_pulse',
+            'use_material',
+            'material',
+            'property',
+            'delay',
+            'duration',
+            'use_repeat',
+            'joystick_index',
+            'event_type',
+            'use_all_events',
+            'axis_number',
+            'axis_direction',
+            'axis_threshold',
+            'single_axis_number',
+            'axis_threshold',
+            'axis_trigger_number',
+            'axis_threshold',
+            'button_number',
+            'key',
+            'modifier_key_1',
+            'modifier_key_2',
+            'use_all_keys',
+            'log',
+            'target',
+            'subject',
+            'mouse_event',
+            'axis',
+            'use_local',
+            'threshold',
+            'property',
+            'distance',
+            'reset_distance',
+            'evaluation_type',
+            'property',
+            'value',
+            'angle',
+            'distance',
+            'seed',
+            'ray_type',
+            'range',
+            'use_x_ray',
+            'mask',
+            'states',
+            'expression',
+            'mode',
+            'text',
+            'mode',
+            'module',
+            'use_debug',
+            'play_mode',
+            'use_force',
+            'use_additive',
+            'use_additive',
+            'action',
+            'use_continue_last_frame',
+            'frame_start',
+            'frame_end',
+            'apply_to_children',
+            'frame_blend_in',
+            'priority',
+            'layer',
+            'layer_weight',
+            'blend_mode',
+            'frame_property',
+            'object',
+            'height',
+            'min',
+            'max',
+            'damping',
+            '',
+            '',
+            '',
+            '',
+            '',
+            '',
+            '',
+            '',
+            '',
+            '',
+            '',
+            '',
+            '',
+            '',
+            '',
+            '',
+            '',
+            '',
+            '',
+            '',
+            '',
+            '',
+            '',
+            '',
+            '',
+            '',
+            '',
+            '',
+            '',
+            '',
+            '',
+            '',
+            '',
+            '',
+            '',
+            '',
+            '',
+            '',
+            '',
+            '',
+            '',
+            '',
+            '',
+            '',
+        ]
 
 
 class BNRemoveLogicBrickSensor(bpy.types.Operator):

@@ -307,6 +307,9 @@ class BNSensorNode(bpy.types.Node, BNBasicNode):
         body = main.box()
         if sensor.type != 'ALWAYS':
             draw_types.get(sensor.type)(sensor, body)
+        if self.target_object and not self.show_info:
+            footer = main.box()
+            footer.label(text=f'Applied To: {self.target_object.name}')
     
     def draw_actuator(self, sensor, body):
         row = body.row()
@@ -427,8 +430,6 @@ class BNControllerNode(bpy.types.Node, BNBasicNode):
     bl_label = 'Controller'
     bl_width_default = 260
     bn_type = 'ControllerNode'
-    use_custom_header = True
-    custom_header = 3
     bricks: bpy.props.EnumProperty(
         items=_enum_controller_bricks,
         update=create_controllers,
