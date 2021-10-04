@@ -179,7 +179,7 @@ def scene_load(context):
     purge_search_results()
     fetch_server_data()
     categories.load_categories()
-    if not bpy.app.timers.is_registered(refresh_token_timer):
+    if not bpy.app.timers.is_registered(refresh_token_timer) and not bpy.app.background:
         bpy.app.timers.register(refresh_token_timer, persistent=True, first_interval=36000)
     update_assets_data()
 
@@ -1313,6 +1313,15 @@ def get_search_simple(parameters, filepath=None, page_size=100, max_results=1000
     bk_logger.info(f'retrieved {len(results)} assets from elastic search')
     return results
 
+def get_single_asset(asset_base_id):
+    preferences = bpy.context.preferences.addons['blenderkit'].preferences
+    params = {
+        'asset_base_id': asset_base_id
+    }
+    results = get_search_simple(params, api_key=preferences.api_key)
+    if len(results)>0:
+        return results[0]
+    return None
 
 def search(category='', get_next=False, author_id=''):
     ''' initialize searching'''
@@ -1616,7 +1625,7 @@ def register_search():
         bpy.utils.register_class(c)
 
     user_preferences = bpy.context.preferences.addons['blenderkit'].preferences
-    if user_preferences.use_timers:
+    if user_preferences.use_timers and not bpy.app.background:
         bpy.app.timers.register(search_timer)
 
     categories.load_categories()
