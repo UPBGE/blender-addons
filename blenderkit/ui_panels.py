@@ -182,7 +182,7 @@ def prop_needed(layout, props, name, value='', is_not_filled=''):
 
 def draw_panel_hdr_upload(self, context):
     layout = self.layout
-    ui_props = bpy.context.scene.blenderkitUI
+    ui_props = bpy.context.window_manager.blenderkitUI
 
     # layout.prop_search(ui_props, "hdr_upload_image", bpy.data, "images")
     layout.prop(ui_props, "hdr_upload_image")
@@ -324,7 +324,7 @@ def draw_panel_scene_upload(self, context):
 
 def draw_assetbar_show_hide(layout, props):
     s = bpy.context.scene
-    ui_props = s.blenderkitUI
+    ui_props = bpy.context.window_manager.blenderkitUI
 
     if ui_props.assetbar_on:
         icon = 'HIDE_OFF'
@@ -334,17 +334,13 @@ def draw_assetbar_show_hide(layout, props):
         ttip = 'Click to Show Asset Bar'
 
     preferences = bpy.context.preferences.addons['blenderkit'].preferences
-    if preferences.experimental_features:
+    if preferences.experimental_features or 1:
         op = layout.operator('view3d.blenderkit_asset_bar_widget', text='', icon=icon)
-        op.keep_running = False
-        op.do_search = False
-        op.tooltip = ttip
     else:
         op = layout.operator('view3d.blenderkit_asset_bar', text='', icon=icon)
-        op.keep_running = False
-        op.do_search = False
-
-        op.tooltip = ttip
+    op.keep_running = False
+    op.do_search = False
+    op.tooltip = ttip
 
 
 def draw_panel_model_search(self, context):
@@ -771,7 +767,7 @@ class VIEW3D_PT_blenderkit_advanced_model_search(Panel):
     @classmethod
     def poll(cls, context):
         s = context.scene
-        ui_props = s.blenderkitUI
+        ui_props = bpy.context.window_manager.blenderkitUI
         return ui_props.down_up == 'SEARCH' and ui_props.asset_type == 'MODEL'
 
     def draw(self, context):
@@ -840,7 +836,7 @@ class VIEW3D_PT_blenderkit_advanced_material_search(Panel):
     @classmethod
     def poll(cls, context):
         s = context.scene
-        ui_props = s.blenderkitUI
+        ui_props = bpy.context.window_manager.blenderkitUI
         return ui_props.down_up == 'SEARCH' and ui_props.asset_type == 'MATERIAL'
 
     def draw(self, context):
@@ -884,7 +880,7 @@ class VIEW3D_PT_blenderkit_advanced_HDR_search(Panel):
     @classmethod
     def poll(cls, context):
         s = context.scene
-        ui_props = s.blenderkitUI
+        ui_props = bpy.context.window_manager.blenderkitUI
         return ui_props.down_up == 'SEARCH' and ui_props.asset_type == 'HDR'
 
     def draw(self, context):
@@ -909,7 +905,7 @@ class VIEW3D_PT_blenderkit_categories(Panel):
     @classmethod
     def poll(cls, context):
         s = context.scene
-        ui_props = s.blenderkitUI
+        ui_props = bpy.context.window_manager.blenderkitUI
         mode = True
         if ui_props.asset_type == 'BRUSH' and not (context.sculpt_object or context.image_paint_object):
             mode = False
@@ -941,7 +937,7 @@ class VIEW3D_PT_blenderkit_import_settings(Panel):
     @classmethod
     def poll(cls, context):
         s = context.scene
-        ui_props = s.blenderkitUI
+        ui_props = bpy.context.window_manager.blenderkitUI
         return ui_props.down_up == 'SEARCH' and ui_props.asset_type in ['MATERIAL', 'MODEL', 'SCENE', 'HDR']
 
     def draw(self, context):
@@ -949,7 +945,7 @@ class VIEW3D_PT_blenderkit_import_settings(Panel):
 
         s = context.scene
         wm = bpy.context.window_manager
-        ui_props = s.blenderkitUI
+        ui_props = bpy.context.window_manager.blenderkitUI
 
         if ui_props.asset_type == 'MODEL':
             # noinspection PyCallByClass
@@ -997,7 +993,7 @@ class VIEW3D_PT_blenderkit_unified(Panel):
 
     def draw(self, context):
         s = context.scene
-        ui_props = s.blenderkitUI
+        ui_props = bpy.context.window_manager.blenderkitUI
         user_preferences = bpy.context.preferences.addons['blenderkit'].preferences
         wm = bpy.context.window_manager
         layout = self.layout
@@ -1175,7 +1171,7 @@ class BlenderKitWelcomeOperator(bpy.types.Operator):
             # show n-key sidebar (spaces[index] has to be found for view3d too:
             # bpy.context.window_manager.windows[0].screen.areas[5].spaces[0].show_region_ui = False
             print('running search no')
-            ui_props = bpy.context.scene.blenderkitUI
+            ui_props = bpy.context.window_manager.blenderkitUI
             # random_searches = [
             #     ('MATERIAL', 'ice'),
             #     ('MODEL', 'car'),
@@ -1218,7 +1214,7 @@ class BlenderKitWelcomeOperator(bpy.types.Operator):
 
 
 def draw_asset_context_menu(layout, context, asset_data, from_panel=False):
-    ui_props = context.scene.blenderkitUI
+    ui_props = context.window_manager.blenderkitUI
 
     author_id = str(asset_data['author'].get('id'))
     wm = bpy.context.window_manager
@@ -1380,7 +1376,7 @@ def draw_asset_context_menu(layout, context, asset_data, from_panel=False):
 
 # def draw_asset_resolution_replace(self, context, resolution):
 #     layout = self.layout
-#     ui_props = bpy.context.scene.blenderkitUI
+#     ui_props = bpy.context.window_manager.blenderkitUI
 #
 #     op = layout.operator('scene.blenderkit_download', text=resolution)
 #     if ui_props.active_index == -3:
@@ -1408,7 +1404,7 @@ def draw_asset_context_menu(layout, context, asset_data, from_panel=False):
 #     bl_idname = "OBJECT_MT_blenderkit_resolution_menu"
 #
 #     def draw(self, context):
-#         ui_props = context.scene.blenderkitUI
+#         ui_props = context.window_manager.blenderkitUI
 #
 #         # sr = bpy.context.window_manager['search results']
 #
@@ -1424,7 +1420,7 @@ class OBJECT_MT_blenderkit_asset_menu(bpy.types.Menu):
     bl_idname = "OBJECT_MT_blenderkit_asset_menu"
 
     def draw(self, context):
-        ui_props = context.scene.blenderkitUI
+        ui_props = context.window_manager.blenderkitUI
 
         sr = bpy.context.window_manager['search results']
         asset_data = sr[ui_props.active_index]
@@ -1872,7 +1868,7 @@ class AssetPopupCard(bpy.types.Operator, ratings_utils.RatingsProperties):
         row.alert = False
 
         row.scale_y = 3
-        ui_props = bpy.context.scene.blenderkitUI
+        ui_props = bpy.context.window_manager.blenderkitUI
         row.prop(ui_props, 'drag_init_button', icon='MOUSE_LMB_DRAG', text='Click / Drag from here', emboss=True)
 
     def draw_menu_desc_author(self, context, layout, width=330):
@@ -2004,7 +2000,7 @@ class AssetPopupCard(bpy.types.Operator, ratings_utils.RatingsProperties):
 
     def execute(self, context):
         wm = context.window_manager
-        ui_props = context.scene.blenderkitUI
+        ui_props = context.window_manager.blenderkitUI
         ui_props.draw_tooltip = False
         sr = bpy.context.window_manager['search results']
         asset_data = sr[ui_props.active_index]
@@ -2204,7 +2200,7 @@ class LoginPopupDialog(bpy.types.Operator):
 
 def draw_panel_categories(self, context):
     s = context.scene
-    ui_props = s.blenderkitUI
+    ui_props = bpy.context.window_manager.blenderkitUI
     user_preferences = bpy.context.preferences.addons['blenderkit'].preferences
     layout = self.layout
     # row = layout.row()
@@ -2236,14 +2232,14 @@ def draw_panel_categories(self, context):
             ctext = '%s (%i)' % (c['name'], c['assetCount'])
 
             preferences = bpy.context.preferences.addons['blenderkit'].preferences
-            if preferences.experimental_features:
+            if preferences.experimental_features or 1:
                 op = row.operator('view3d.blenderkit_asset_bar_widget', text=ctext)
             else:
                 op = row.operator('view3d.blenderkit_asset_bar', text=ctext)
-                op.do_search = True
-                op.keep_running = True
-                op.tooltip = f"Browse {c['name']} category"
-                op.category = c['slug']
+            op.do_search = True
+            op.keep_running = True
+            op.tooltip = f"Browse {c['name']} category"
+            op.category = c['slug']
             if len(c['children']) > 0 and c['assetCount'] > 15 or (
                     utils.profile_is_validator() and user_preferences.categories_fix):
                 # row = row.split()
@@ -2301,7 +2297,7 @@ def header_search_draw(self, context):
         layout = self.layout
         s = bpy.context.scene
         wm = bpy.context.window_manager
-        ui_props = s.blenderkitUI
+        ui_props = bpy.context.window_manager.blenderkitUI
         if ui_props.asset_type == 'MODEL':
             props = wm.blenderkit_models
         if ui_props.asset_type == 'MATERIAL':
@@ -2336,6 +2332,9 @@ def header_search_draw(self, context):
         elif ui_props.asset_type == 'HDR':
             layout.popover(panel="VIEW3D_PT_blenderkit_advanced_HDR_search", text="", icon_value=icon_id)
 
+        if utils.profile_is_validator():
+            search_props = utils.get_search_props()
+            layout.prop(search_props, 'search_verification_status', text ='')
 
 def ui_message(title, message):
     def draw_message(self, context):
