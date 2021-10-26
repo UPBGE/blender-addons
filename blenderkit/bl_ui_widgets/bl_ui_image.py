@@ -21,8 +21,9 @@ class BL_UI_Image(BL_UI_Widget):
 
     def set_image(self, rel_filepath):
         try:
-            self.__image = bpy.data.images.load(rel_filepath, check_existing=True)
-            self.__image.gl_load()
+            if self.__image is None or self.__image.filepath != rel_filepath:
+                self.__image = bpy.data.images.load(rel_filepath, check_existing=True)
+                self.__image.gl_load()
         except:
             pass
 
@@ -30,7 +31,7 @@ class BL_UI_Image(BL_UI_Widget):
         super().update(x, y)
 
     def draw(self):
-        if not self.visible:
+        if not self._is_visible:
             return
 
         area_height = self.get_area_height()
