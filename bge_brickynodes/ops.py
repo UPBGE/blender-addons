@@ -1,5 +1,5 @@
 import bpy
-import bricknodes
+import bge_bricknodes
 
 
 sensor_types = {
@@ -55,7 +55,7 @@ actuator_types = {
 
 class BNConvertBricks(bpy.types.Operator):
     """Convert Bricks to Nodes"""
-    bl_idname = "bricknodes.convert_bricks"
+    bl_idname = "bge_bricknodes.convert_bricks"
     bl_label = "Convert"
     bl_options = {'REGISTER', 'UNDO'}
 
@@ -155,7 +155,7 @@ class BNConvertBricks(bpy.types.Operator):
 
 class BNDuplicateBrick(bpy.types.Operator):
     """Duplicate this brick"""
-    bl_idname = "bricknodes.duplicate_brick"
+    bl_idname = "bge_bricknodes.duplicate_brick"
     bl_label = "Duplicate Brick"
     bl_options = {'REGISTER', 'UNDO'}
 
@@ -334,7 +334,7 @@ class BNDuplicateBrick(bpy.types.Operator):
 
 class BNRemoveLogicBrickSensor(bpy.types.Operator):
     """Remove the selected sensor from the selected object"""
-    bl_idname = "bricknodes.remove_sensor"
+    bl_idname = "bge_bricknodes.remove_sensor"
     bl_label = "Remove Sensor"
     bl_options = {'REGISTER', 'UNDO'}
     target_brick: bpy.props.StringProperty()
@@ -355,7 +355,7 @@ class BNRemoveLogicBrickSensor(bpy.types.Operator):
 
 class BNRemoveLogicBrickController(bpy.types.Operator):
     """Remove the selected controller from the selected object"""
-    bl_idname = "bricknodes.remove_controller"
+    bl_idname = "bge_bricknodes.remove_controller"
     bl_label = "Remove Controller"
     bl_options = {'REGISTER', 'UNDO'}
     target_brick: bpy.props.StringProperty()
@@ -386,7 +386,7 @@ class BNRemoveLogicBrickController(bpy.types.Operator):
 
 class BNRemoveLogicBrickActuator(bpy.types.Operator):
     """Remove the selected actuator from the selected object"""
-    bl_idname = "bricknodes.remove_actuator"
+    bl_idname = "bge_bricknodes.remove_actuator"
     bl_label = "Remove Actuator"
     bl_options = {'REGISTER', 'UNDO'}
     target_brick: bpy.props.StringProperty()
@@ -407,10 +407,10 @@ class BNRemoveLogicBrickActuator(bpy.types.Operator):
 
 class BNUpdateTree(bpy.types.Operator):
     """Synchronize logic bricks with the node setup. This should normally happen automatically"""
-    bl_idname = "bricknodes.update_all"
+    bl_idname = "bge_bricknodes.update_all"
     bl_label = "Sync"
     bl_options = {'REGISTER', 'UNDO'}
 
     def execute(self, context):
-        bricknodes.nodes.update_all_trees(self, context)
+        bge_bricknodes.nodes.update_all_trees(self, context)
         return {'FINISHED'}

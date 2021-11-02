@@ -1,5 +1,5 @@
 import bpy
-import bricknodes
+import bge_bricknodes
 
 
 class BGE_PT_BrickyTreeOptions(bpy.types.Panel):
@@ -17,8 +17,8 @@ class BGE_PT_BrickyTreeOptions(bpy.types.Panel):
     def draw(self, context):
         layout = self.layout
         r = layout.row()
-        r.operator('bricknodes.update_all')
-        r.operator('bricknodes.convert_bricks')
+        r.operator('bge_bricknodes.update_all')
+        r.operator('bge_bricknodes.convert_bricks')
 
 
 class BGE_PT_BrickyObjectSensors(bpy.types.Panel):
@@ -39,7 +39,7 @@ class BGE_PT_BrickyObjectSensors(bpy.types.Panel):
             b = layout.box()
             r = b.row()
             r.label(text=s.name)
-            op = r.operator('bricknodes.remove_sensor', text='', icon='X')
+            op = r.operator('bge_bricknodes.remove_sensor', text='', icon='X')
             op.target_brick = s.name
 
 
@@ -61,7 +61,7 @@ class BGE_PT_BrickyObjectControllers(bpy.types.Panel):
             b = layout.box()
             r = b.row()
             r.label(text=c.name)
-            op = r.operator('bricknodes.remove_controller', text='', icon='X')
+            op = r.operator('bge_bricknodes.remove_controller', text='', icon='X')
             op.target_brick = c.name
 
 
@@ -83,7 +83,7 @@ class BGE_PT_BrickyObjectActuators(bpy.types.Panel):
             b = layout.box()
             r = b.row()
             r.label(text=a.name)
-            op = r.operator('bricknodes.remove_actuator', text='', icon='X')
+            op = r.operator('bge_bricknodes.remove_actuator', text='', icon='X')
             op.target_brick = a.name
 
 
@@ -133,7 +133,7 @@ class BGEBrickTree(bpy.types.NodeTree):
 
         compare_bricks = {}
         for n in self.nodes:
-            if isinstance(n, bricknodes.nodes.BNBasicNode):
+            if isinstance(n, bge_bricknodes.nodes.BNBasicNode):
                 if n.brick_name != n.target_brick:
                     n.brick_name = n.target_brick
                 if n.get_brick() not in compare_bricks:

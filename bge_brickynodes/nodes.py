@@ -1,5 +1,5 @@
 import bpy
-import bricknodes
+import bge_bricknodes
 
 
 _enum_sensor_bricks = [
@@ -71,7 +71,7 @@ def rename_brick(self, context):
     if self.target_brick != self.brick_name:
         brick.name = self.target_brick = self.brick_name
     for t in bpy.data.node_groups:
-        if isinstance(t, bricknodes.ui.BGEBrickTree):
+        if isinstance(t, bge_bricknodes.ui.BGEBrickTree):
             for n in t.nodes:
                 if n.target_brick == old_name and n.target_object == self.target_object:
                     n.target_brick = self.brick_name
@@ -89,7 +89,7 @@ def update_tree(self, context):
 
 def update_all_trees(self, context):
     for tree in bpy.data.node_groups:
-        if isinstance(tree, bricknodes.ui.BGEBrickTree):
+        if isinstance(tree, bge_bricknodes.ui.BGEBrickTree):
             tree.update()
 
 
@@ -254,8 +254,8 @@ class BNSensorNode(bpy.types.Node, BNBasicNode):
                     text='Sensor'
                 )
                 if sensor:
-                    # subheader.operator('bricknodes.rename_brick', text='', icon='GREASEPENCIL')
-                    underline.operator('bricknodes.remove_sensor', text='', icon='X')
+                    # subheader.operator('bge_bricknodes.rename_brick', text='', icon='GREASEPENCIL')
+                    underline.operator('bge_bricknodes.remove_sensor', text='', icon='X')
                     # layout.separator()
                 else:
                     return
@@ -274,9 +274,9 @@ class BNSensorNode(bpy.types.Node, BNBasicNode):
         info.prop(sensor, 'type', text='')
         info.prop(self, 'brick_name', text='')
         info.prop(sensor, 'active', text='')
-        info.operator('bricknodes.duplicate_brick', text='', icon='DUPLICATE')
+        info.operator('bge_bricknodes.duplicate_brick', text='', icon='DUPLICATE')
         if not self.show_info:
-            info.operator('bricknodes.remove_sensor', text='', icon='X')
+            info.operator('bge_bricknodes.remove_sensor', text='', icon='X')
         
         optbox = main.box()
         opts = optbox.row()
@@ -485,8 +485,8 @@ class BNControllerNode(bpy.types.Node, BNBasicNode):
                     text='Controller'
                 )
                 if controller:
-                    # subheader.operator('bricknodes.rename_brick', text='', icon='GREASEPENCIL')
-                    underline.operator('bricknodes.remove_controller', text='', icon='X')
+                    # subheader.operator('bge_bricknodes.rename_brick', text='', icon='GREASEPENCIL')
+                    underline.operator('bge_bricknodes.remove_controller', text='', icon='X')
                     # layout.separator()
                 else:
                     return
@@ -505,9 +505,9 @@ class BNControllerNode(bpy.types.Node, BNBasicNode):
         info.prop(self, 'brick_name', text='')
         info.prop(controller, 'use_priority', text='', icon='BOOKMARKS')
         info.prop(controller, 'active', text='')
-        info.operator('bricknodes.duplicate_brick', text='', icon='DUPLICATE')
+        info.operator('bge_bricknodes.duplicate_brick', text='', icon='DUPLICATE')
         if not self.show_info:
-            info.operator('bricknodes.remove_controller', text='', icon='X')
+            info.operator('bge_bricknodes.remove_controller', text='', icon='X')
         infobox.prop(controller, 'states', text='Controller visible at')
         infobox.template_layers(controller, 'states', self.target_object.game, 'used_states', 0)
 
@@ -582,8 +582,8 @@ class BNActuatorNode(bpy.types.Node, BNBasicNode):
                     text='Actuator'
                 )
                 if actuator:
-                    # subheader.operator('bricknodes.rename_brick', text='', icon='GREASEPENCIL')
-                    underline.operator('bricknodes.remove_actuator', text='', icon='X')
+                    # subheader.operator('bge_bricknodes.rename_brick', text='', icon='GREASEPENCIL')
+                    underline.operator('bge_bricknodes.remove_actuator', text='', icon='X')
                     # layout.separator()
                 else:
                     return
@@ -601,9 +601,9 @@ class BNActuatorNode(bpy.types.Node, BNBasicNode):
         info.prop(actuator, 'type', text='')
         info.prop(self, 'brick_name', text='')
         info.prop(actuator, 'active', text='')
-        info.operator('bricknodes.duplicate_brick', text='', icon='DUPLICATE')
+        info.operator('bge_bricknodes.duplicate_brick', text='', icon='DUPLICATE')
         if not self.show_info:
-            info.operator('bricknodes.remove_actuator', text='', icon='X')
+            info.operator('bge_bricknodes.remove_actuator', text='', icon='X')
 
         draw_types = {
             'ACTION': self.draw_action,
