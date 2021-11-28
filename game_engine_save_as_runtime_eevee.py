@@ -312,7 +312,7 @@ class SaveAsRuntime(bpy.types.Operator):
     copy_logic_nodes: BoolProperty(
             name="Copy Logic Nodes game folder",
             description="Copy Logic Nodes game with the runtime",
-            default=False,
+            default=True,
             )
 
     # Only Windows has dlls to copy or can modify icon
