@@ -189,11 +189,7 @@ def write_attribute(
             finally:
                 context.visit_state.pop()
 
-        else:                
-            if hasattr(parent, 'paint_active_slot'):
-                logger.warning("Avoid crash for paint_active_slot")
-                logger.warning(f"... attribute: {context.visit_state.display_path()}.{key}, value: {value}")
-                return
+        else:
             assert isinstance(key, str)
 
             prop = parent.bl_rna.properties.get(key)
