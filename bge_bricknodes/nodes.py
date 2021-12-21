@@ -526,6 +526,9 @@ class BNControllerNode(bpy.types.Node, BNBasicNode):
                 data.prop(controller, 'mode', text='')
                 data.prop(controller, 'module', text='')
                 parts.prop(controller, 'use_debug', text='D', toggle=True)
+        if self.target_object and not self.show_info:
+            footer = main.box()
+            footer.label(text=f'Applied To: {self.target_object.name}')
 
 
 class BNActuatorNode(bpy.types.Node, BNBasicNode):
@@ -628,6 +631,9 @@ class BNActuatorNode(bpy.types.Node, BNBasicNode):
         }
         body = main.box()
         draw_types.get(actuator.type)(actuator, body)
+        if self.target_object and not self.show_info:
+            footer = main.box()
+            footer.label(text=f'Applied To: {self.target_object.name}')
 
     def draw_action(self, act, body):
         main = body.row()

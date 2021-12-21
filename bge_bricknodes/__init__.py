@@ -125,8 +125,8 @@ register_classes.extend(nodes._act_nodes)
 register_classes.extend(nodes._sockets)
 
 def register():
+    print(f'Registering Bricky Nodes...')
     for c in register_classes:
-        print(f'Registering Class: {c.__name__}')
         bpy.utils.register_class(c)
 
     node_items = []

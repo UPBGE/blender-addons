@@ -284,51 +284,7 @@ class BNDuplicateBrick(bpy.types.Operator):
             'height',
             'min',
             'max',
-            'damping',
-            '',
-            '',
-            '',
-            '',
-            '',
-            '',
-            '',
-            '',
-            '',
-            '',
-            '',
-            '',
-            '',
-            '',
-            '',
-            '',
-            '',
-            '',
-            '',
-            '',
-            '',
-            '',
-            '',
-            '',
-            '',
-            '',
-            '',
-            '',
-            '',
-            '',
-            '',
-            '',
-            '',
-            '',
-            '',
-            '',
-            '',
-            '',
-            '',
-            '',
-            '',
-            '',
-            '',
-            '',
+            'damping'
         ]
 
 
@@ -413,4 +369,55 @@ class BNUpdateTree(bpy.types.Operator):
 
     def execute(self, context):
         bge_bricknodes.nodes.update_all_trees(self, context)
+        return {'FINISHED'}
+
+
+class NLAddPropertyOperator(bpy.types.Operator):
+    bl_idname = "bricknodes.add_game_prop"
+    bl_label = "Add Game Property"
+    bl_options = {'REGISTER', 'UNDO'}
+    bl_description = "Adds a property available to the UPBGE"
+
+    @classmethod
+    def poll(cls, context):
+        return True
+
+    def execute(self, context):
+        bpy.ops.object.game_property_new()
+        return {'FINISHED'}
+
+
+class NLMovePropertyOperator(bpy.types.Operator):
+    bl_idname = "bricknodes.move_game_prop"
+    bl_label = "Move Game Property"
+    bl_description = "Move Game Property"
+    bl_options = {'REGISTER', 'UNDO'}
+    index: bpy.props.IntProperty()
+    direction: bpy.props.StringProperty()
+
+    @classmethod
+    def poll(cls, context):
+        return True
+
+    def execute(self, context):
+        bpy.ops.object.game_property_move(
+            index=self.index,
+            direction=self.direction
+        )
+        return {'FINISHED'}
+
+
+class NLRemovePropertyOperator(bpy.types.Operator):
+    bl_idname = "bricknodes.remove_game_prop"
+    bl_label = "Add Game Property"
+    bl_description = "Remove this property"
+    bl_options = {'REGISTER', 'UNDO'}
+    index: bpy.props.IntProperty()
+
+    @classmethod
+    def poll(cls, context):
+        return True
+
+    def execute(self, context):
+        bpy.ops.object.game_property_remove(index=self.index)
         return {'FINISHED'}
