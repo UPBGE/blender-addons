@@ -46,6 +46,7 @@ class Rig(BaseLimbRig):
         if self.use_heel2:
             self.toe_bone_index = 4
             self.fk_name_suffix_cutoff = 3
+            self.fk_ik_layer_cutoff = 4
 
         super().initialize()
 
@@ -214,7 +215,7 @@ class Rig(BaseLimbRig):
 
     def parent_fk_parent_bone(self, i, parent_mch, prev_ctrl, org, prev_org):
         if i == self.toe_bone_index:
-            self.set_bone_parent(parent_mch, prev_org, use_connect=True)
+            self.set_bone_parent(parent_mch, prev_org, use_connect=True, inherit_scale='ALIGNED')
 
         else:
             super().parent_fk_parent_bone(i, parent_mch, prev_ctrl, org, prev_org)
