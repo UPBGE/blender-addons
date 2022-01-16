@@ -422,30 +422,66 @@ def camera_light_source(use_camera,
 
         # This is the distance from the object measured in terms of %
         # of the camera distance. It is set onto 50% (1/2) distance.
-        light_dl = sqrt(object_size) * 15 * 0.5
+        lamp_dl = sqrt(object_size) * 15 * 0.5
         # This is a factor to which extend the lamp shall go to the right
         # (from the camera  point of view).
-        light_dy_right = light_dl * (3.0/4.0)
+        lamp_dy_right = lamp_dl * (3.0/4.0)
 
         # Create x, y and z for the lamp.
-        object_light_vec = Vector((light_dl,light_dy_right,light_dl))
-        light_xyz_vec = object_center_vec + object_light_vec
+        object_lamp_vec = Vector((lamp_dl,lamp_dy_right,lamp_dl))
+        lamp_xyz_vec = object_center_vec + object_lamp_vec
+        length = lamp_xyz_vec.length
 
-        # Create the lamp
-        light_data = bpy.data.lights.new(name="A_light", type="SUN")
-        light_data.distance = 500.0
-        light_data.energy = 3.0
-        lamp = bpy.data.objects.new("A_light", light_data)
-        lamp.location = light_xyz_vec
+        # Eevee
+        # =====
+
+        # As a lamp we use a point source.
+        lamp_data = bpy.data.lights.new(name="A_lamp_eevee", type="POINT")
+        # We now determine the emission strength of the lamp. Note that the
+        # intensity depends on 1/r^2. For this we use a value of 100000.0 at a
+        # distance of 58. This value was determined manually inside Blender.
+        lamp_data.energy = 100000.0 * ( (length * length) / (58.0 * 58.0) )
+        lamp = bpy.data.objects.new("A_lamp_eevee", lamp_data)
+        lamp.location = lamp_xyz_vec
         bpy.context.collection.objects.link(lamp)
+
+        # Cycles
+        # ======
+
+        # As a lamp we use a ball.
+        bpy.ops.mesh.primitive_uv_sphere_add(
+                        segments=64,
+                        ring_count=64,
+                        align='WORLD',
+                        enter_editmode=False,
+                        # We move the lamp below the point source from above.
+                        location=lamp_xyz_vec + Vector((0.0, 0.0, 1.5)),
+                        rotation=(0, 0, 0))
+        lamp = bpy.context.view_layer.objects.active
+        # We put an 'A_' just that the lamp appears first in the outliner
+        # tree
+        lamp.name = "A_lamp"
+
+        # See above.
+        strength = 5000.0 * ( (length * length) / (58.0 * 58.0) )
+
+        # Now, we create the material
+        lamp_material = bpy.data.materials.new(lamp.name)
+        lamp_material.use_nodes = True
+        # Create the emission Node.
+        material_output = lamp_material.node_tree.nodes.get('Material Output')
+        emission = lamp_material.node_tree.nodes.new('ShaderNodeEmission')
+        # Emission and strength values
+        emission.inputs['Strength'].default_value = strength
+        emission.inputs['Color'].default_value = (1.0, 1.0, 1.0, 1.0)
+        # The new material into the tree and link the material of the object
+        # with the new material.
+        lamp_material.node_tree.links.new(material_output.inputs[0], emission.outputs[0])
+        lamp.active_material = lamp_material
 
         # Some settings for the World: a bit ambient occlusion
         bpy.context.scene.world.light_settings.use_ambient_occlusion = True
-        bpy.context.scene.world.light_settings.ao_factor = 0.2
-        # Some properties for cycles
-        lamp.data.use_nodes = True
-        lmp_P_BSDF = lamp.data.node_tree.nodes['Emission']
-        lmp_P_BSDF.inputs['Strength'].default_value = 5
+        bpy.context.scene.world.light_settings.ao_factor = 0.1
 
 # -----------------------------------------------------------------------------
 #                                                            The main routine
@@ -487,8 +523,10 @@ def import_xyz(Ball_type,
         # Take the first atom
         atom = atoms_of_one_type[0]
         material = bpy.data.materials.new(atom.name)
+        material.use_nodes = True
+        mat_P_BSDF = material.node_tree.nodes['Principled BSDF']
+        mat_P_BSDF.inputs['Base Color'].default_value = atom.color
         material.name = atom.name
-        material.diffuse_color = atom.color
         atom_material_list.append(material)
 
     # Now, we go through all atoms and give them a material. For all atoms ...
@@ -503,19 +541,21 @@ def import_xyz(Ball_type,
                     # However, before we check if it is a vacancy
                     # The vacancy is represented by a transparent cube.
                     if atom.name == "Vacancy":
-                        # Some properties for eevee.
-                        material.metallic = 0.8
-                        material.specular_intensity = 0.5
-                        material.roughness = 0.3
-                        material.blend_method = 'OPAQUE'
-                        material.show_transparent_back = False
-                        # Some properties for cycles
+                        # For cycles and eevee.
                         material.use_nodes = True
                         mat_P_BSDF = material.node_tree.nodes['Principled BSDF']
                         mat_P_BSDF.inputs['Metallic'].default_value = 0.1
-                        mat_P_BSDF.inputs['Roughness'].default_value = 0.2
-                        mat_P_BSDF.inputs['Transmission'].default_value = 0.97
+                        mat_P_BSDF.inputs['Specular'].default_value = 0.15
+                        mat_P_BSDF.inputs['Roughness'].default_value = 0.05
+                        mat_P_BSDF.inputs['Clearcoat Roughness'].default_value = 0.37
                         mat_P_BSDF.inputs['IOR'].default_value = 0.8
+                        mat_P_BSDF.inputs['Transmission'].default_value = 0.6
+                        mat_P_BSDF.inputs['Transmission Roughness'].default_value = 0.0
+                        mat_P_BSDF.inputs['Alpha'].default_value = 0.5
+                        # Some additional stuff for eevee.
+                        material.blend_method = 'HASHED'
+                        material.shadow_method = 'HASHED'
+                        material.use_backface_culling = False
                     # The atom gets its properties.
                     atom.material = material
 
