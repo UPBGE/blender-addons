@@ -27,9 +27,9 @@ import stat
 
 bl_info = {
     "name": "Game Engine Publishing",
-    "author": "Mitchell Stokes (Moguri), Oren Titane (Genome36)",
-    "version": (0, 1, 0),
-    "blender": (2, 75, 0),
+    "author": "Mitchell Stokes (Moguri), Oren Titane (Genome36), Jorge Bernal (lordloki)",
+    "version": (0, 2, 0),
+    "blender": (2, 80, 0),
     "location": "Render Properties > Publishing Info",
     "description": "Publish .blend file as game engine runtime, manage versions and platforms",
     "warning": "",
@@ -38,7 +38,7 @@ bl_info = {
 }
 
 
-def WriteRuntime(player_path, output_path, asset_paths, copy_python, overwrite_lib, copy_dlls, make_archive, report=print):
+def WriteRuntime(player_path, output_path, asset_paths, copy_python, overwrite_lib, copy_dlls, copy_scripts, copy_datafiles, copy_modules, copy_logic_nodes, make_archive, report=print):
     import struct
 
     player_path = bpy.path.abspath(player_path)
@@ -48,8 +48,12 @@ def WriteRuntime(player_path, output_path, asset_paths, copy_python, overwrite_l
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
+    # Extract new version string. Only take first 3 digits (i.e 3.0)
+    string = bpy.app.version_string.split()[0]
+    version_string = string[:3]
+
     python_dir = os.path.join(os.path.dirname(player_path),
-                              bpy.app.version_string.split()[0],
+                              version_string,
                               "python",
                               "lib")
 
@@ -127,7 +131,7 @@ def WriteRuntime(player_path, output_path, asset_paths, copy_python, overwrite_l
 
     if copy_python:
         print("Copying Python files...", end=" ", flush=True)
-        py_folder = os.path.join(bpy.app.version_string.split()[0], "python", "lib")
+        py_folder = os.path.join(version_string, "python", "lib")
         dst = os.path.join(output_dir, py_folder)
         src = python_dir
 
@@ -147,8 +151,76 @@ def WriteRuntime(player_path, output_path, asset_paths, copy_python, overwrite_l
             src = os.path.join(blender_dir, file)
             dst = os.path.join(output_dir, file)
             shutil.copy2(src, dst)
+        src = os.path.join(blender_dir, "blender.crt")
+        dst = os.path.join(output_dir, "blender.crt")
+        shutil.copytree(src, dst)
 
         print("done", flush=True)
+
+    # Copy Scripts folder (also copy this folder when logic nodes option is selected)
+    if copy_scripts or copy_logic_nodes:
+        print("Copying scripts and modules...", end=" ")
+        scripts_folder = os.path.join(version_string, "scripts")
+        src = os.path.join(blender_dir, scripts_folder)
+        dst = os.path.join(output_dir, scripts_folder)
+        shutil.copytree(src, dst)
+        print("\ndone")
+        print("\nCopying userpref.blend to can use addons...", end=" ")
+        user_path = bpy.utils.resource_path('USER')
+        user_config_path = os.path.join(user_path, "config")
+        user_config_userpref_path = os.path.join(user_config_path, "userpref.blend")
+        runtime_config_folder = os.path.join(version_string, "config")
+        runtime_config_folder_path = os.path.join(output_dir, runtime_config_folder)
+        os.makedirs(runtime_config_folder_path)
+        shutil.copy2(user_config_userpref_path, runtime_config_folder_path)
+        print("done")
+
+    # Copy logic nodes game folder
+    if copy_logic_nodes:
+        print("Copying logic nodes game folder...", end=" ")
+        blend_directory = os.path.dirname(bpy.data.filepath)
+        src = os.path.join(blend_directory, "bgelogic")
+        if os.path.exists(src):
+            dst = os.path.join(output_dir, "bgelogic")
+            shutil.copytree(src, dst)
+        print("done")
+
+    # Copy datafiles folder
+    if copy_datafiles:
+        print("Copying datafiles...", end=" ")
+        datafiles_folder = os.path.join(version_string, "datafiles", "gamecontroller")
+        src = os.path.join(blender_dir, datafiles_folder)
+        dst = os.path.join(output_dir, datafiles_folder)
+        shutil.copytree(src, dst)
+        datafiles_folder = os.path.join(version_string, "datafiles", "colormanagement")
+        src = os.path.join(blender_dir, datafiles_folder)
+        dst = os.path.join(output_dir, datafiles_folder)
+        shutil.copytree(src, dst)
+        datafiles_folder = os.path.join(version_string, "datafiles", "fonts")
+        src = os.path.join(blender_dir, datafiles_folder)
+        dst = os.path.join(output_dir, datafiles_folder)
+        shutil.copytree(src, dst)
+        datafiles_folder = os.path.join(version_string, "datafiles", "studiolights")
+        src = os.path.join(blender_dir, datafiles_folder)
+        dst = os.path.join(output_dir, datafiles_folder)
+        shutil.copytree(src, dst)
+        print("done")
+
+    # Copy modules folder (to have bpy working)
+    if copy_modules and not (copy_scripts or copy_logic_nodes):
+        print("Copying modules...", end=" ")
+        modules_folder = os.path.join(version_string, "scripts", "modules")
+        src = os.path.join(blender_dir, modules_folder)
+        dst = os.path.join(output_dir, modules_folder)
+        shutil.copytree(src, dst)
+        print("done")
+
+    # Copy license folder
+    print("Copying UPBGE license folder...", end=" ")
+    src = os.path.join(blender_dir, "license")
+    dst = os.path.join(output_dir, "license")
+    shutil.copytree(src, dst)
+    print("done")
 
     # Copy assets
     for ap in asset_paths:
@@ -223,6 +295,10 @@ class PublishAllPlatforms(bpy.types.Operator):
                          True,
                          True,
                          True,
+                         True,
+                         True,
+                         True,
+                         True,
                          ps.make_archive,
                          self.report
                          )
@@ -235,6 +311,10 @@ class PublishAllPlatforms(bpy.types.Operator):
                 WriteRuntime(platform.player_path,
                             os.path.join(ps.output_path, platform.name, ps.runtime_name),
                             ps.asset_paths,
+                            True,
+                            True,
+                            True,
+                            True,
                             True,
                             True,
                             True,
@@ -398,7 +478,7 @@ class PublishDownloadPlatforms(bpy.types.Operator):
                         if key == 'href' and value.startswith('blender'):
                             remote_platforms.append(value)
 
-        url = 'http://download.blender.org/release/Blender' + bpy.app.version_string.split()[0]
+        url = 'http://download.blender.org/release/Blender' + version_string
         parser = AnchorParser()
         data = urllib.request.urlopen(url).read()
         parser.feed(str(data))
