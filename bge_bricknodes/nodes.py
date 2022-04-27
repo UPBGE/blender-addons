@@ -397,6 +397,11 @@ class BNSensorNode(bpy.types.Node, BNBasicNode):
         body.prop(sensor, 'evaluation_type', text='Evaluation Type')
         body.prop_search(sensor, 'property', self.target_object.game, 'properties', text='Property')
         body.prop(sensor, 'value', text='Value')
+        print(sensor.evaluation_type)
+        if sensor.evaluation_type == 'PROPINTERVAL':
+            minmax = body.row()
+            minmax.prop(sensor, 'value_min')
+            minmax.prop(sensor, 'value_max')
 
     def draw_radar(self, sensor, body):
         body.prop(sensor, 'property', text='Property')

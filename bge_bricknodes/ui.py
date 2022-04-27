@@ -6,7 +6,7 @@ class BGE_PT_BrickyTreeOptions(bpy.types.Panel):
     bl_label = "Administration"
     bl_space_type = "NODE_EDITOR"
     bl_region_type = "UI"
-    bl_category = "Node"
+    bl_category = "Dashboard"
     _current_tree = None
 
     @classmethod
@@ -223,7 +223,7 @@ class BGE_PT_GamePropertyPanel(bpy.types.Panel):
     bl_label = "Game Properties"
     bl_space_type = "NODE_EDITOR"
     bl_region_type = "UI"
-    bl_category = "Node"
+    bl_category = "Dashboard"
 
     @classmethod
     def poll(cls, context):
@@ -362,7 +362,7 @@ class BGEBN_PT_GameComponentPanel(bpy.types.Panel):
     bl_label = "Components"
     bl_space_type = "NODE_EDITOR"
     bl_region_type = "UI"
-    bl_category = "Node"
+    bl_category = "Dashboard"
     # module = bpy.StringProperty()
 
     @classmethod
