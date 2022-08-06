@@ -65,7 +65,7 @@ def pbr_metallic_roughness(mh: MaterialHelper):
 
             need_volume_node = True
 
-            # We also need glTF Settings Node, to set thicknessFactor and thicknessTexture
+            # We also need glTF Material Output Node, to set thicknessFactor and thicknessTexture
             mh.settings_node = make_settings_node(mh)
             mh.settings_node.location = additional_location
             mh.settings_node.width = 180
@@ -616,7 +616,9 @@ def occlusion(mh: MaterialHelper, location, occlusion_socket):
     )
 
 
-# => [Add Emission] => [Mix Alpha] => [Material Output]
+# => [Add Emission] => [Mix Alpha] => [Material Output] if needed, only for SpecGlossiness
+# => [Volume] => [Add Shader] => [Material Output] if needed
+# => [Velvet] => [Add Shader] => [Material Output] if nedded
 def make_output_nodes(
     mh: MaterialHelper,
     location,
