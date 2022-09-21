@@ -2,6 +2,7 @@
 
 import bpy
 import gpu
+import bgl
 from mathutils import Vector, Matrix
 from mathutils.geometry import tessellate_polygon
 from gpu_extras.batch import batch_for_shader
@@ -25,7 +26,10 @@ def export(filepath, face_data, colors, width, height, opacity):
 
 
 def draw_image(face_data, opacity):
-    gpu.state.blend_set('ALPHA_PREMULT')
+    bgl.glLineWidth(1)
+    bgl.glEnable(bgl.GL_BLEND)
+    bgl.glEnable(bgl.GL_LINE_SMOOTH)
+    bgl.glHint(bgl.GL_LINE_SMOOTH_HINT, bgl.GL_NICEST)
 
     with gpu.matrix.push_pop():
         gpu.matrix.load_matrix(get_normalize_uvs_matrix())
@@ -34,7 +38,8 @@ def draw_image(face_data, opacity):
         draw_background_colors(face_data, opacity)
         draw_lines(face_data)
 
-    gpu.state.blend_set('NONE')
+    bgl.glDisable(bgl.GL_BLEND)
+    bgl.glDisable(bgl.GL_LINE_SMOOTH)
 
 
 def get_normalize_uvs_matrix():
@@ -80,15 +85,11 @@ def draw_lines(face_data):
             coords.append((start[0], start[1]))
             coords.append((end[0], end[1]))
 
-    # Use '2D_UNIFORM_COLOR' in the `batch_for_shader` so we don't need to
-    # convert the coordinates to 3D as in the case of
-    # '3D_POLYLINE_UNIFORM_COLOR'.
-    batch = batch_for_shader(gpu.shader.from_builtin('2D_UNIFORM_COLOR'), 'LINES', {"pos": coords})
-    shader = gpu.shader.from_builtin('3D_POLYLINE_UNIFORM_COLOR')
+    shader = gpu.shader.from_builtin('2D_UNIFORM_COLOR')
     shader.bind()
-    shader.uniform_float("viewportSize", gpu.state.viewport_get()[2:])
-    shader.uniform_float("lineWidth", 0.5)
     shader.uniform_float("color", (0, 0, 0, 1))
+    batch = batch_for_shader(shader, 'LINES', {"pos": coords})
+
     batch.draw(shader)
 
 
