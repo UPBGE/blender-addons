@@ -155,7 +155,7 @@ def gather_animation_channels(obj_uuid: int,
 
             children_obj_parent_to_bones = []
             for bone_uuid in bones_uuid:
-                children_obj_parent_to_bones.extend([child for child in export_settings['vtree'].nodes[bone_uuid].children if export_settings['vtree'].nodes[child].blender_type != VExportNode.BONE])
+                children_obj_parent_to_bones.extend([child for child in export_settings['vtree'].nodes[bone_uuid].children if export_settings['vtree'].nodes[child].blender_type not in [VExportNode.BONE, VExportNode.ARMATURE]])
             for child_uuid in children_obj_parent_to_bones:
 
                 channels_baked = gather_channels_baked(child_uuid, export_settings)
@@ -534,7 +534,8 @@ def __gather_armature_object_channel_groups(blender_action: bpy.types.Action, bl
 
         # Detect that armature is not multiple keyed for euler and quaternion
         # Keep only the current rotation mode used by bone
-        rotation, delta, rotation_modes = get_rotation_modes(target_property)
+        rotation, rotation_modes = get_rotation_modes(target_property)
+        delta = get_delta_modes(target_property)
 
         # Delta rotation management
         if delta is False:
