@@ -182,12 +182,18 @@ def WriteRuntime(player_path, output_path, new_icon_path, copy_python, overwrite
     # Copy DLLs
     if copy_dlls:
         print("Copying DLLs...", end=" ")
+        # Dlls at executable level
         for file in [i for i in os.listdir(blender_dir) if i.lower().endswith('.dll')]:
             src = os.path.join(blender_dir, file)
             dst = os.path.join(runtime_dir, file)
             shutil.copy2(src, dst)
+        # blender.crt DLLs
         src = os.path.join(blender_dir, "blender.crt")
         dst = os.path.join(runtime_dir, "blender.crt")
+        shutil.copytree(src, dst)
+        # blender.shared DLLs
+        src = os.path.join(blender_dir, "blender.shared")
+        dst = os.path.join(runtime_dir, "blender.shared")
         shutil.copytree(src, dst)
         print("done")
 
@@ -198,8 +204,8 @@ def WriteRuntime(player_path, output_path, new_icon_path, copy_python, overwrite
         src = os.path.join(blender_dir, scripts_folder)
         dst = os.path.join(runtime_dir, scripts_folder)
         shutil.copytree(src, dst)
-        print("\ndone")
-        print("\nCopying userpref.blend to can use addons...", end=" ")
+        print("done")
+        print("Copying userpref.blend to can use addons...", end=" ")
         user_path = bpy.utils.resource_path('USER')
         user_config_path = os.path.join(user_path, "config")
         user_config_userpref_path = os.path.join(user_config_path, "userpref.blend")
@@ -252,8 +258,12 @@ def WriteRuntime(player_path, output_path, new_icon_path, copy_python, overwrite
     # Copy license folder
     print("Copying UPBGE license folder...", end=" ")
     src = os.path.join(blender_dir, "license")
-    dst = os.path.join(runtime_dir, "license")
+    dst = os.path.join(runtime_dir, "engine.license")
     shutil.copytree(src, dst)
+    license_folder = os.path.join(runtime_dir, "engine.license")
+    src = os.path.join(blender_dir, "copyright.txt")
+    dst = os.path.join(license_folder, "copyright.txt")
+    shutil.copy2(src, dst)
     print("done")
 
 from bpy.props import *
