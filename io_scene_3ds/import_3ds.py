@@ -98,9 +98,8 @@ OBJECT_LIGHT_OUTER_RANGE = 0x465A
 OBJECT_LIGHT_MULTIPLIER = 0x465B
 OBJECT_LIGHT_AMBIENT_LIGHT = 0x4680
 
-OBJECT_CAMERA = 0x4700  # This lets un know we are reading a camera object
-
 # >------ sub defines of CAMERA
+OBJECT_CAMERA = 0x4700  # This lets un know we are reading a camera object
 OBJECT_CAM_RANGES = 0x4720  # The camera range values
 
 # >------ sub defines of OBJECT_MESH
@@ -121,8 +120,9 @@ KFDATA_LIGHT = 0xB005
 KFDATA_L_TARGET = 0xB006
 KFDATA_SPOTLIGHT = 0xB007
 KFDATA_KFSEG = 0xB008
-# KFDATA_CURTIME = 0xB009
+KFDATA_CURTIME = 0xB009
 # KFDATA_KFHDR = 0xB00A
+
 # >------ sub defines of KEYFRAME_NODE
 OBJECT_NODE_HDR = 0xB010
 OBJECT_INSTANCE_NAME = 0xB011
@@ -137,10 +137,10 @@ FOV_TRACK_TAG = 0xB023
 ROLL_TRACK_TAG = 0xB024
 COL_TRACK_TAG = 0xB025
 # MORPH_TRACK_TAG = 0xB026
-# HOTSPOT_TRACK_TAG = 0xB027
-# FALLOFF_TRACK_TAG = 0xB028
+HOTSPOT_TRACK_TAG = 0xB027
+FALLOFF_TRACK_TAG = 0xB028
 # HIDE_TRACK_TAG = 0xB029
-# OBJECT_NODE_ID = 0xB030
+OBJECT_NODE_ID = 0xB030
 
 ROOT_OBJECT = 0xFFFF
 
@@ -308,7 +308,7 @@ def add_texture_to_material(image, contextWrapper, pct, extend, alpha, scale, of
     contextWrapper._grid_to_location(1, 0, dst_node=contextWrapper.node_out, ref_node=shader)
 
 
-def process_next_chunk(context, file, previous_chunk, imported_objects, IMAGE_SEARCH, WORLD_MATRIX, KEYFRAME):
+def process_next_chunk(context, file, previous_chunk, imported_objects, CONSTRAIN, IMAGE_SEARCH, WORLD_MATRIX, KEYFRAME):
     from bpy_extras.image_utils import load_image
 
     contextObName = None
@@ -337,6 +337,7 @@ def process_next_chunk(context, file, previous_chunk, imported_objects, IMAGE_SE
     SZ_4U_SHORT = struct.calcsize('4H')
     SZ_4x3MAT = struct.calcsize('ffffffffffff')
 
+    object_dict = {}  # object identities
     object_list = []  # for hierarchy
     object_parent = []  # index of parent in hierarchy, 0xFFFF = no parent
     pivot_list = []  # pivots with hierarchy handling
@@ -367,7 +368,6 @@ def process_next_chunk(context, file, previous_chunk, imported_objects, IMAGE_SE
             for v1, v2, v3 in myContextMesh_facels:
                 eekadoodle_faces.extend((v3, v1, v2) if v3 == 0 else (v1, v2, v3))
             bmesh.polygons.foreach_set("loop_start", range(0, nbr_faces * 3, 3))
-            bmesh.polygons.foreach_set("loop_total", (3,) * nbr_faces)
             bmesh.loops.foreach_set("vertex_index", eekadoodle_faces)
 
             if bmesh.polygons and contextMeshUV:
@@ -559,6 +559,8 @@ def process_next_chunk(context, file, previous_chunk, imported_objects, IMAGE_SE
         temp_data = file.read(SZ_U_INT)
         nkeys = struct.unpack('<I', temp_data)[0]
         new_chunk.bytes_read += SZ_U_INT
+        if nkeys == 0:
+            keyframe_data[0] = default_data
         for i in range(nkeys):
             temp_data = file.read(SZ_U_INT)
             nframe = struct.unpack('<I', temp_data)[0]
@@ -566,14 +568,14 @@ def process_next_chunk(context, file, previous_chunk, imported_objects, IMAGE_SE
             temp_data = file.read(SZ_U_SHORT)
             nflags = struct.unpack('<H', temp_data)[0]
             new_chunk.bytes_read += SZ_U_SHORT
-            if nflags > 0:
+            if nflags > 0:  # Check for spline terms
                 temp_data = file.read(SZ_FLOAT)
                 new_chunk.bytes_read += SZ_FLOAT
             temp_data = file.read(SZ_3FLOAT)
             data = struct.unpack('<3f', temp_data)
             new_chunk.bytes_read += SZ_3FLOAT
-            if nframe == 0:
-                return data
+            keyframe_data[nframe] = data
+        return keyframe_data
 
     def read_track_angle(temp_chunk):
         new_chunk.bytes_read += SZ_U_SHORT * 5
@@ -581,6 +583,8 @@ def process_next_chunk(context, file, previous_chunk, imported_objects, IMAGE_SE
         temp_data = file.read(SZ_U_INT)
         nkeys = struct.unpack('<I', temp_data)[0]
         new_chunk.bytes_read += SZ_U_INT
+        if nkeys == 0:
+            keyframe_angle[0] = default_value
         for i in range(nkeys):
             temp_data = file.read(SZ_U_INT)
             nframe = struct.unpack('<I', temp_data)[0]
@@ -588,14 +592,14 @@ def process_next_chunk(context, file, previous_chunk, imported_objects, IMAGE_SE
             temp_data = file.read(SZ_U_SHORT)
             nflags = struct.unpack('<H', temp_data)[0]
             new_chunk.bytes_read += SZ_U_SHORT
-            if nflags > 0:
+            if nflags > 0:  # Check for spline terms
                 temp_data = file.read(SZ_FLOAT)
                 new_chunk.bytes_read += SZ_FLOAT
             temp_data = file.read(SZ_FLOAT)
             angle = struct.unpack('<f', temp_data)[0]
             new_chunk.bytes_read += SZ_FLOAT
-            if nframe == 0:
-                return math.radians(angle)
+            keyframe_angle[nframe] = math.radians(angle)
+        return keyframe_angle
 
     dirname = os.path.dirname(file.name)
 
@@ -631,7 +635,7 @@ def process_next_chunk(context, file, previous_chunk, imported_objects, IMAGE_SE
 
         # is it an object info chunk?
         elif new_chunk.ID == OBJECTINFO:
-            process_next_chunk(context, file, new_chunk, imported_objects, IMAGE_SEARCH, WORLD_MATRIX, KEYFRAME)
+            process_next_chunk(context, file, new_chunk, imported_objects, CONSTRAIN, IMAGE_SEARCH, WORLD_MATRIX, KEYFRAME)
 
             # keep track of how much we read in the main chunk
             new_chunk.bytes_read += temp_chunk.bytes_read
@@ -895,16 +899,16 @@ def process_next_chunk(context, file, previous_chunk, imported_objects, IMAGE_SE
             CreateBlenderObject = False
             CreateLightObject = True
 
-        elif CreateLightObject and new_chunk.ID == COLOR_F:  # color
+        elif CreateLightObject and new_chunk.ID == COLOR_F:  # Light color
             temp_data = file.read(SZ_3FLOAT)
             contextLamp.data.color = struct.unpack('<3f', temp_data)
             new_chunk.bytes_read += SZ_3FLOAT
-        elif CreateLightObject and new_chunk.ID == OBJECT_LIGHT_MULTIPLIER:  # intensity
+        elif CreateLightObject and new_chunk.ID == OBJECT_LIGHT_MULTIPLIER:  # Intensity
             temp_data = file.read(SZ_FLOAT)
             contextLamp.data.energy = (float(struct.unpack('f', temp_data)[0]) * 1000)
             new_chunk.bytes_read += SZ_FLOAT
 
-        elif CreateLightObject and new_chunk.ID == OBJECT_LIGHT_SPOT:  # spotlight
+        elif CreateLightObject and new_chunk.ID == OBJECT_LIGHT_SPOT:  # Spotlight
             temp_data = file.read(SZ_3FLOAT)
             contextLamp.data.type = 'SPOT'
             spot = mathutils.Vector(struct.unpack('<3f', temp_data))
@@ -915,15 +919,15 @@ def process_next_chunk(context, file, previous_chunk, imported_objects, IMAGE_SE
             contextLamp.rotation_euler[0] = -1 * math.copysign(angle, aim[1])
             contextLamp.rotation_euler[2] = -1 * (math.radians(90) - math.acos(aim[0] / hypo))
             new_chunk.bytes_read += SZ_3FLOAT
-            temp_data = file.read(SZ_FLOAT)  # hotspot
+            temp_data = file.read(SZ_FLOAT)  # Hotspot
             hotspot = float(struct.unpack('f', temp_data)[0])
             new_chunk.bytes_read += SZ_FLOAT
-            temp_data = file.read(SZ_FLOAT)  # angle
+            temp_data = file.read(SZ_FLOAT)  # Beam angle
             beam_angle = float(struct.unpack('f', temp_data)[0])
             contextLamp.data.spot_size = math.radians(beam_angle)
             contextLamp.data.spot_blend = (1.0 - (hotspot / beam_angle)) * 2
             new_chunk.bytes_read += SZ_FLOAT
-        elif CreateLightObject and new_chunk.ID == OBJECT_LIGHT_ROLL:  # roll
+        elif CreateLightObject and new_chunk.ID == OBJECT_LIGHT_ROLL:  # Roll
             temp_data = file.read(SZ_FLOAT)
             contextLamp.rotation_euler[1] = float(struct.unpack('f', temp_data)[0])
             new_chunk.bytes_read += SZ_FLOAT
@@ -969,10 +973,27 @@ def process_next_chunk(context, file, previous_chunk, imported_objects, IMAGE_SE
             new_chunk.bytes_read += 4
             context.scene.frame_end = stop
 
-        # including these here means their EK_OB_NODE_HEADER are scanned
+        elif KEYFRAME and new_chunk.ID == KFDATA_CURTIME:
+            temp_data = file.read(SZ_U_INT)
+            current = struct.unpack('<I', temp_data)[0]
+            new_chunk.bytes_read += 4
+            context.scene.frame_current = current
+
+        # including these here means their OB_NODE_HDR are scanned
         # another object is being processed
-        elif new_chunk.ID in {KFDATA_OBJECT, KFDATA_AMBIENT, KFDATA_CAMERA, KFDATA_OBJECT, KFDATA_TARGET, KFDATA_LIGHT, KFDATA_L_TARGET, }:
+        elif new_chunk.ID in {KFDATA_AMBIENT, KFDATA_OBJECT, KFDATA_CAMERA, KFDATA_LIGHT}:
+            object_id = ROOT_OBJECT
+            tracking = 'OBJECT'
             child = None
+
+        elif new_chunk.ID in {KFDATA_TARGET, KFDATA_L_TARGET}:
+            tracking = 'TARGET'
+            child = None
+
+        elif new_chunk.ID == OBJECT_NODE_ID:
+            temp_data = file.read(SZ_U_SHORT)
+            object_id = struct.unpack('<H', temp_data)[0]
+            new_chunk.bytes_read += 2
 
         elif new_chunk.ID == OBJECT_NODE_HDR:
             object_name, read_str_len = read_string(file)
@@ -994,7 +1015,8 @@ def process_next_chunk(context, file, previous_chunk, imported_objects, IMAGE_SE
                     context.view_layer.active_layer_collection.collection.objects.link(child)
                     imported_objects.append(child)
 
-            if object_name != '$AMBIENT$':
+            if tracking != 'TARGET' and object_name != '$AMBIENT$':
+                object_dict[object_id] = child
                 object_list.append(child)
                 object_parent.append(hierarchy)
                 pivot_list.append(mathutils.Vector((0.0, 0.0, 0.0)))
@@ -1022,17 +1044,57 @@ def process_next_chunk(context, file, previous_chunk, imported_objects, IMAGE_SE
             child.data.auto_smooth_angle = math.radians(smooth_angle)
 
         elif KEYFRAME and new_chunk.ID == COL_TRACK_TAG and colortrack == 'AMBIENT':  # Ambient
-            child.node_tree.nodes['Background'].inputs[0].default_value[:3] = read_track_data(temp_chunk)
+            keyframe_data = {}
+            default_data = child.color[:]
+            child.node_tree.nodes['Background'].inputs[0].default_value[:3] = read_track_data(temp_chunk)[0]
+            for keydata in keyframe_data.items():
+                child.node_tree.nodes['Background'].inputs[0].default_value[:3] = keydata[1]
+                child.node_tree.keyframe_insert(data_path="nodes[\"Background\"].inputs[0].default_value", frame=keydata[0])
 
-        elif KEYFRAME and new_chunk.ID == POS_TRACK_TAG:  # Translation
-            child.location = read_track_data(temp_chunk)
+        elif KEYFRAME and new_chunk.ID == COL_TRACK_TAG and colortrack == 'LIGHT':  # Color
+            keyframe_data = {}
+            default_data = child.data.color[:]
+            child.data.color = read_track_data(temp_chunk)[0]
+            for keydata in keyframe_data.items():
+                child.data.color = keydata[1]
+                child.data.keyframe_insert(data_path="color", frame=keydata[0])
 
-        elif KEYFRAME and new_chunk.ID == ROT_TRACK_TAG and child.type == 'MESH':  # Rotation
+        elif KEYFRAME and new_chunk.ID == POS_TRACK_TAG and tracking == 'OBJECT':  # Translation
+            keyframe_data = {}
+            default_data = child.location[:]
+            child.location = read_track_data(temp_chunk)[0]
+            for keydata in keyframe_data.items():
+                child.location = mathutils.Vector(keydata[1]) * (CONSTRAIN * 0.1) if hierarchy == ROOT_OBJECT and CONSTRAIN != 0.0 else keydata[1]
+                child.keyframe_insert(data_path="location", frame=keydata[0])
+
+        elif KEYFRAME and new_chunk.ID == POS_TRACK_TAG and tracking == 'TARGET':  # Target position
+            keyframe_data = {}
+            target = read_track_data(temp_chunk)[0]
+            pos = child.location + mathutils.Vector(target)  # Target triangulation
+            foc = math.copysign(math.sqrt(pow(pos[1],2)+pow(pos[0],2)),pos[1])
+            hyp = math.copysign(math.sqrt(pow(foc,2)+pow(target[2],2)),pos[1])
+            tilt = math.radians(90)-math.copysign(math.acos(foc/hyp), pos[2])
+            child.rotation_euler[0] = -1*math.copysign(tilt, pos[1])
+            child.rotation_euler[2] = -1*(math.radians(90)-math.acos(pos[0]/foc))
+            for keydata in keyframe_data.items():
+                target = keydata[1]
+                pos = child.location + mathutils.Vector(target)
+                foc = math.copysign(math.sqrt(pow(pos[1],2)+pow(pos[0],2)),pos[1])
+                hyp = math.copysign(math.sqrt(pow(foc,2)+pow(target[2],2)),pos[1])
+                tilt = math.radians(90)-math.copysign(math.acos(foc/hyp), pos[2])
+                child.rotation_euler[0] = -1*math.copysign(tilt, pos[1])
+                child.rotation_euler[2] = -1*(math.radians(90)-math.acos(pos[0]/foc))
+                child.keyframe_insert(data_path="rotation_euler", frame=keydata[0])
+
+        elif KEYFRAME and new_chunk.ID == ROT_TRACK_TAG and tracking == 'OBJECT':  # Rotation
+            keyframe_rotation = {}
             new_chunk.bytes_read += SZ_U_SHORT * 5
             temp_data = file.read(SZ_U_SHORT * 5)
             temp_data = file.read(SZ_U_INT)
             nkeys = struct.unpack('<I', temp_data)[0]
             new_chunk.bytes_read += SZ_U_INT
+            if nkeys == 0:
+                keyframe_rotation[0] = child.rotation_axis_angle[:]
             for i in range(nkeys):
                 temp_data = file.read(SZ_U_INT)
                 nframe = struct.unpack('<I', temp_data)[0]
@@ -1044,23 +1106,57 @@ def process_next_chunk(context, file, previous_chunk, imported_objects, IMAGE_SE
                     temp_data = file.read(SZ_FLOAT)
                     new_chunk.bytes_read += SZ_FLOAT
                 temp_data = file.read(SZ_4FLOAT)
-                rad, axis_x, axis_y, axis_z = struct.unpack("<4f", temp_data)
+                rotation = struct.unpack("<4f", temp_data)
                 new_chunk.bytes_read += SZ_4FLOAT
-                if nframe == 0:
-                    child.rotation_euler = mathutils.Quaternion(
-                        (axis_x, axis_y, axis_z), -rad).to_euler()   # why negative?
+                keyframe_rotation[nframe] = rotation
+            rad, axis_x, axis_y, axis_z = keyframe_rotation[0]
+            child.rotation_euler = mathutils.Quaternion((axis_x, axis_y, axis_z), -rad).to_euler()  # Why negative?
+            for keydata in keyframe_rotation.items():
+                rad, axis_x, axis_y, axis_z = keydata[1]
+                child.rotation_euler = mathutils.Quaternion((axis_x, axis_y, axis_z), -rad).to_euler()
+                child.keyframe_insert(data_path="rotation_euler", frame=keydata[0])
 
-        elif KEYFRAME and new_chunk.ID == SCL_TRACK_TAG and child.type == 'MESH':  # Scale
-            child.scale = read_track_data(temp_chunk)
+        elif KEYFRAME and new_chunk.ID == SCL_TRACK_TAG and tracking == 'OBJECT':  # Scale
+            keyframe_data = {}
+            default_data = child.scale[:]
+            child.scale = read_track_data(temp_chunk)[0]
+            for keydata in keyframe_data.items():
+                child.scale = mathutils.Vector(keydata[1]) * (CONSTRAIN * 0.1) if hierarchy == ROOT_OBJECT and CONSTRAIN != 0.0 else keydata[1]
+                child.keyframe_insert(data_path="scale", frame=keydata[0])
 
-        elif KEYFRAME and new_chunk.ID == COL_TRACK_TAG and colortrack == 'LIGHT':  # Color
-            child.data.color = read_track_data(temp_chunk)
+        elif KEYFRAME and new_chunk.ID == ROLL_TRACK_TAG and tracking == 'OBJECT':  # Roll angle
+            keyframe_angle = {}
+            default_value = child.rotation_euler[1]
+            child.rotation_euler[1] = read_track_angle(temp_chunk)[0]
+            for keydata in keyframe_angle.items():
+                child.rotation_euler[1] = keydata[1]
+                child.keyframe_insert(data_path="rotation_euler", index=1, frame=keydata[0])
 
         elif KEYFRAME and new_chunk.ID == FOV_TRACK_TAG and child.type == 'CAMERA':  # Field of view
-            child.data.angle = read_track_angle(temp_chunk)
+            keyframe_angle = {}
+            default_value = child.data.angle
+            child.data.angle = read_track_angle(temp_chunk)[0]
+            for keydata in keyframe_angle.items():
+                child.data.lens = (child.data.sensor_width/2)/math.tan(keydata[1]/2)
+                child.data.keyframe_insert(data_path="lens", frame=keydata[0])
 
-        elif KEYFRAME and new_chunk.ID == ROLL_TRACK_TAG and child.type == 'CAMERA':  # Roll angle
-            child.rotation_euler[1] = read_track_angle(temp_chunk)
+        elif new_chunk.ID == HOTSPOT_TRACK_TAG and child.type == 'LIGHT' and child.data.type == 'SPOT':  # Hotspot
+            keyframe_angle = {}
+            cone_angle = math.degrees(child.data.spot_size)
+            default_value = cone_angle-(child.data.spot_blend*math.floor(cone_angle))   
+            hot_spot = read_track_angle(temp_chunk)[0]
+            child.data.spot_blend = 1.0 - (hot_spot/cone_angle)
+            for keydata in keyframe_angle.items():
+                child.data.spot_blend = 1.0 - (keydata[1]/cone_angle)
+                child.data.keyframe_insert(data_path="spot_blend", frame=keydata[0])
+
+        elif new_chunk.ID == FALLOFF_TRACK_TAG and child.type == 'LIGHT' and child.data.type == 'SPOT':  # Falloff
+            keyframe_angle = {}
+            default_value = math.degrees(child.data.spot_size)
+            child.data.spot_size = read_track_angle(temp_chunk)[0]
+            for keydata in keyframe_angle.items():
+                child.data.spot_size = keydata[1]
+                child.data.keyframe_insert(data_path="spot_size", frame=keydata[0])
 
         else:
             buffer_size = new_chunk.length - new_chunk.bytes_read
@@ -1094,14 +1190,21 @@ def process_next_chunk(context, file, previous_chunk, imported_objects, IMAGE_SE
         if parent == ROOT_OBJECT:
             if ob.parent is not None:
                 ob.parent = None
-        else:
+        elif parent not in object_dict:
             if ob.parent != object_list[parent]:
                 if ob == object_list[parent]:
                     print('   warning: Cannot assign self to parent ', ob)
                 else:
-                    ob.parent = object_list[parent]
+                    ob.parent = object_list[parent]    
+        else:
+            if ob.parent != object_dict[parent]:
+                if ob == object_dict[parent]:
+                    print('   warning: Cannot assign self to parent ', ob)
+                else:
+                    ob.parent = object_dict[parent]
 
-            # pivot_list[ind] += pivot_list[parent]  # XXX, not sure this is correct, should parent space matrix be applied before combining?
+        #pivot_list[ind] += pivot_list[parent]  # Not sure this is correct, should parent space matrix be applied before combining?
+
     # fix pivots
     for ind, ob in enumerate(object_list):
         if ob.type == 'MESH':
@@ -1114,7 +1217,7 @@ def process_next_chunk(context, file, previous_chunk, imported_objects, IMAGE_SE
 
 def load_3ds(filepath,
              context,
-             IMPORT_CONSTRAIN_BOUNDS=10.0,
+             CONSTRAIN=10.0,
              IMAGE_SEARCH=True,
              WORLD_MATRIX=False,
              KEYFRAME=True,
@@ -1145,7 +1248,7 @@ def load_3ds(filepath,
         file.close()
         return
 
-    if IMPORT_CONSTRAIN_BOUNDS:
+    if CONSTRAIN:
         BOUNDS_3DS[:] = [1 << 30, 1 << 30, 1 << 30, -1 << 30, -1 << 30, -1 << 30]
     else:
         del BOUNDS_3DS[:]
@@ -1159,7 +1262,7 @@ def load_3ds(filepath,
     scn = context.scene
 
     imported_objects = []  # Fill this list with objects
-    process_next_chunk(context, file, current_chunk, imported_objects, IMAGE_SEARCH, WORLD_MATRIX, KEYFRAME)
+    process_next_chunk(context, file, current_chunk, imported_objects, CONSTRAIN, IMAGE_SEARCH, WORLD_MATRIX, KEYFRAME)
 
     # fixme, make unglobal
     object_dictionary.clear()
@@ -1184,6 +1287,9 @@ def load_3ds(filepath,
 
     for ob in imported_objects:
         ob.select_set(True)
+        if not APPLY_MATRIX:  # Reset transform
+            bpy.ops.object.rotation_clear()
+            bpy.ops.object.location_clear()
 
     # Done DUMMYVERT
     """
@@ -1215,7 +1321,7 @@ def load_3ds(filepath,
 
     axis_min = [1000000000] * 3
     axis_max = [-1000000000] * 3
-    global_clamp_size = IMPORT_CONSTRAIN_BOUNDS
+    global_clamp_size = CONSTRAIN
     if global_clamp_size != 0.0:
         # Get all object bounds
         for ob in imported_objects:
@@ -1259,7 +1365,7 @@ def load(operator,
 
     load_3ds(filepath,
              context,
-             IMPORT_CONSTRAIN_BOUNDS=constrain_size,
+             CONSTRAIN=constrain_size,
              IMAGE_SEARCH=use_image_search,
              WORLD_MATRIX=use_world_matrix,
              KEYFRAME=read_keyframe,
