@@ -29,7 +29,7 @@ def draw_callback_px(self, context):
     # 50% alpha, 2 pixel width line
     if context.area != self.current_area:
         return
-    shader = gpu.shader.from_builtin('2D_UNIFORM_COLOR')
+    shader = gpu.shader.from_builtin('UNIFORM_COLOR')
     gpu.state.blend_set('ALPHA')
     gpu.state.line_width_set(2.0)
 
@@ -61,7 +61,7 @@ def draw_callback_px(self, context):
     font_id = 0
     ## draw text debug infos
     blf.position(font_id, 15, 30, 0)
-    blf.size(font_id, 20, 72)
+    blf.size(font_id, 20.0)
     blf.draw(font_id, f'angle: {math.degrees(self.angle):.1f}')
 
 
