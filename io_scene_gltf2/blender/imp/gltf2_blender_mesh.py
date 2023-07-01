@@ -1,5 +1,6 @@
+# SPDX-FileCopyrightText: 2018-2021 The glTF-Blender-IO authors
+#
 # SPDX-License-Identifier: Apache-2.0
-# Copyright 2018-2021 The glTF-Blender-IO authors.
 
 import bpy
 from mathutils import Matrix
@@ -247,7 +248,7 @@ def do_primitives(gltf, mesh_idx, skin_idx, mesh, ob):
                     (len(indices), DataType.num_elements(gltf.data.accessors[prim.attributes[attr]].type)),
                      dtype=ComponentType.to_numpy_dtype(gltf.data.accessors[prim.attributes[attr]].component_type)
                 )
-            attribute_data[idx] = np.concatenate((attribute_data[idx], attr_data))
+            attribute_data[idx] = np.concatenate((attribute_data[idx], attr_data[unique_indices]))
 
     # Accessors are cached in case they are shared between primitives; clear
     # the cache now that all prims are done.
@@ -641,7 +642,8 @@ def set_poly_smoothing(gltf, pymesh, mesh, vert_normals, loop_vidxs):
     num_polys = len(mesh.polygons)
 
     if gltf.import_settings['import_shading'] == "FLAT":
-        # Polys are flat by default; don't have to do anything
+        # Polys are smooth by default, setting to flat
+        mesh.shade_flat()
         return
 
     if gltf.import_settings['import_shading'] == "SMOOTH":

@@ -1,6 +1,6 @@
+# SPDX-FileCopyrightText: 2013 Campbell Barton
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
-
-# Script copyright (C) 2013 Campbell Barton
 
 try:
     from . import data_types
@@ -54,6 +54,13 @@ class FBXElem:
         data = pack('?', data)
 
         self.props_type.append(data_types.BOOL)
+        self.props.append(data)
+
+    def add_int8(self, data):
+        assert(isinstance(data, int))
+        data = pack('<b', data)
+
+        self.props_type.append(data_types.INT8)
         self.props.append(data)
 
     def add_int16(self, data):

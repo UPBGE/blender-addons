@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2021-2023 Blender Foundation
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 '''Based on viewport_timeline_scrub standalone addon - Samuel Bernou'''
@@ -37,7 +39,7 @@ def draw_callback_px(self, context):
     # text
     font_id = 0
 
-    shader = gpu.shader.from_builtin('UNIFORM_COLOR')  # initiate shader
+    shader = gpu.shader.from_builtin('UNIFORM_COLOR') # initiate shader
     gpu.state.blend_set('ALPHA')
     gpu.state.line_width_set(1.0)
 

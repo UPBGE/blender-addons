@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2010-2023 Blender Foundation
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 bl_info = {
@@ -959,7 +961,7 @@ class IMPORT_IMAGE_OT_to_plane(Operator, AddObjectHelper):
             plane.select_set(True)
 
         # all done!
-        self.report({'INFO'}, "Added {} Image Plane(s)".format(len(planes)))
+        self.report({'INFO'}, tip_("Added {} Image Plane(s)").format(len(planes)))
 
     # operate on a single image
     def single_image_spec_to_plane(self, context, img_spec):

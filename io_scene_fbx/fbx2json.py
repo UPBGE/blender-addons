@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
+# SPDX-FileCopyrightText: 2006-2012 assimp team
+# SPDX-FileCopyrightText: 2013 Blender Foundation
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
-
-# Script copyright (C) 2006-2012, assimp team
-# Script copyright (C) 2013 Blender Foundation
 
 """
 Usage
@@ -28,6 +28,7 @@ for each property.
 
 The types are as follows:
 
+* 'Z': - INT8
 * 'Y': - INT16
 * 'C': - BOOL
 * 'I': - INT32
@@ -106,6 +107,7 @@ def unpack_array(read, array_type, array_stride, array_byteswap):
 
 
 read_data_dict = {
+    b'Z'[0]: lambda read: unpack(b'<b', read(1))[0],  # 8 bit int
     b'Y'[0]: lambda read: unpack(b'<h', read(2))[0],  # 16 bit int
     b'C'[0]: lambda read: unpack(b'?', read(1))[0],   # 1 bit bool (yes/no)
     b'I'[0]: lambda read: unpack(b'<i', read(4))[0],  # 32 bit int
@@ -221,6 +223,7 @@ def parse(fn, use_namedtuple=True):
 data_types = type(array)("data_types")
 data_types.__dict__.update(
 dict(
+INT8 = b'Z'[0],
 INT16 = b'Y'[0],
 BOOL = b'C'[0],
 INT32 = b'I'[0],
