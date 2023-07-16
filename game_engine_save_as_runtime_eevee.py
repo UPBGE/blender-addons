@@ -81,7 +81,7 @@ def WriteAppleRuntime(player_path, output_path, copy_python, overwrite_lib):
     # Python doesn't need to be copied for OS X since it's already inside blenderplayer.app
 
 
-def WriteRuntime(player_path, output_path, new_icon_path, copy_python, overwrite_lib, copy_dlls, copy_scripts, copy_datafiles, copy_modules, copy_logic_nodes, report=print):
+def WriteRuntime(player_path, output_path, new_icon_path, copy_python, overwrite_lib, copy_dlls, copy_libs, copy_scripts, copy_datafiles, copy_modules, copy_logic_nodes, report=print):
     import struct
 
     # Check the paths
@@ -194,6 +194,15 @@ def WriteRuntime(player_path, output_path, new_icon_path, copy_python, overwrite
         # blender.shared DLLs
         src = os.path.join(blender_dir, "blender.shared")
         dst = os.path.join(runtime_dir, "blender.shared")
+        shutil.copytree(src, dst)
+        print("done")
+
+    # Copy linux shared libs
+    if copy_libs:
+        print("Copying shared libs...", end=" ")
+        # blender.crt DLLs
+        src = os.path.join(blender_dir, "lib")
+        dst = os.path.join(runtime_dir, "lib")
         shutil.copytree(src, dst)
         print("done")
 
@@ -342,6 +351,16 @@ class SaveAsRuntime(bpy.types.Operator):
         copy_dlls = False
         new_icon_path = False
 
+    # Only Linux has lib folder
+    if os.name == 'posix':
+        copy_libs: BoolProperty(
+                name="Copy shared libs",
+                description="Copy all the needed executable shared libs with the runtime",
+                default=True,
+                )
+    else:
+        copy_libs = False
+
     def execute(self, context):
         import time
         start_time = time.time()
@@ -352,6 +371,7 @@ class SaveAsRuntime(bpy.types.Operator):
                      self.copy_python,
                      self.overwrite_lib,
                      self.copy_dlls,
+                     self.copy_libs,
                      self.copy_scripts,
                      self.copy_datafiles,
                      self.copy_modules,
