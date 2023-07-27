@@ -269,10 +269,10 @@ def WriteRuntime(player_path, output_path, new_icon_path, copy_python, overwrite
     src = os.path.join(blender_dir, "license")
     dst = os.path.join(runtime_dir, "engine.license")
     shutil.copytree(src, dst)
-    license_folder = os.path.join(runtime_dir, "engine.license")
-    src = os.path.join(blender_dir, "copyright.txt")
-    dst = os.path.join(license_folder, "copyright.txt")
-    shutil.copy2(src, dst)
+    #license_folder = os.path.join(runtime_dir, "engine.license")
+    #src = os.path.join(blender_dir, "copyright.txt")
+    #dst = os.path.join(license_folder, "copyright.txt")
+    #shutil.copy2(src, dst)
     print("done")
 
 from bpy.props import *
