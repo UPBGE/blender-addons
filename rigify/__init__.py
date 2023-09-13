@@ -386,48 +386,22 @@ class RigifyBoneCollectionReference(bpy.types.PropertyGroup):
     uid: IntProperty(name="Unique ID", default=-1)
 
     def find_collection(self, *, update=False, raise_error=False) -> bpy.types.BoneCollection | None:
-        uid = self.uid
-        if uid < 0:
-            return None
-
-        arm = self.id_data.data
-
-        if name := self.get("name", ""):
-            name_coll = arm.collections.get(name)
-
-            if name_coll and name_coll.rigify_uid == uid:
-                return name_coll
-
-        for coll in arm.collections:
-            if coll.rigify_uid == uid:
-                if update:
-                    self["name"] = coll.name
-                return coll
-
-        if raise_error:
-            raise utils.errors.MetarigError(f"Broken bone collection reference: {name} #{uid}")
-
-        return None
+        return utils.layers.resolve_collection_reference(self.id_data, self, update=update, raise_error=raise_error)
 
     def set_collection(self, coll: bpy.types.BoneCollection | None):
-        if not coll:
+        if coll is None:
             self.uid = -1
             self["name"] = ""
-            return
-
-        if coll.rigify_uid < 0:
-            coll.rigify_uid = utils.misc.choose_next_uid(coll.id_data.collections, "rigify_uid")
-
-        self.uid = coll.rigify_uid
-        self["name"] = coll.name
+        else:
+            self.uid = utils.layers.ensure_collection_uid(coll)
+            self["name"] = coll.name
 
     def _name_get(self):
         if coll := self.find_collection(update=False):
             return coll.name
 
         if self.uid >= 0:
-            if name := self.get("name", ""):
-                return f"? {name} #{self.uid}"
+            return self.get('name') or '?'
 
         return ""
 
