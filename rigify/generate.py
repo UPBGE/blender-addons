@@ -24,6 +24,7 @@ from .utils.rig import get_rigify_type, get_rigify_target_rig,\
     get_rigify_rig_basename, get_rigify_force_widget_update, get_rigify_finalize_script,\
     get_rigify_mirror_widgets, get_rigify_colors
 from .utils.action_layers import ActionLayerBuilder
+from .utils.objects import ArtifactManager
 
 from . import base_generate
 from . import rig_ui_template
@@ -135,6 +136,8 @@ class Generator(base_generate.BaseGenerator):
         if obj_found:
             self.saved_visible_layers = {coll.name: coll.is_visible for coll in obj.data.collections}
 
+            self.artifacts.generate_init_existing(obj)
+
     def __find_legacy_collection(self) -> bpy.types.Collection:
         """For backwards comp, matching by name to find a legacy collection.
         (For before there was a Widget Collection PointerProperty)
@@ -217,8 +220,12 @@ class Generator(base_generate.BaseGenerator):
 
         validate_collection_references(self.metarig)
 
-        if ROOT_COLLECTION not in collections:
+        coll = collections.get(ROOT_COLLECTION)
+
+        if not coll:
             coll = collections.new(ROOT_COLLECTION)
+
+        if coll.rigify_ui_row <= 0:
             coll.rigify_ui_row = 2 + choose_next_uid(collections, 'rigify_ui_row', min_value=1)
 
     def __duplicate_rig(self):
@@ -452,6 +459,8 @@ class Generator(base_generate.BaseGenerator):
         self.__unhide_rig_object(obj)
 
         # Collect data from the existing rig
+        self.artifacts = ArtifactManager(self)
+
         self.__save_rig_data(obj, obj_found)
 
         # Select the chosen working collection in case it changed
@@ -632,6 +641,8 @@ class Generator(base_generate.BaseGenerator):
             bpy.ops.object.mode_set(mode='OBJECT')
 
         obj.data.collections.active_index = 0
+
+        self.artifacts.generate_cleanup()
 
         ###########################################
         # Restore active collection
