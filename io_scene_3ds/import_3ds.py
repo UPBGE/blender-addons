@@ -244,7 +244,7 @@ def skip_to_end(file, skip_chunk):
 # MATERIALS #
 #############
 
-def add_texture_to_material(image, contextWrapper, pct, extend, alpha, scale, offset, angle, tintcolor, mapto):
+def add_texture_to_material(image, contextWrapper, pct, extend, alpha, scale, offset, angle, tint1, tint2, mapto):
     shader = contextWrapper.node_principled_bsdf
     nodetree = contextWrapper.material.node_tree
     shader.location = (-300, 0)
@@ -256,26 +256,31 @@ def add_texture_to_material(image, contextWrapper, pct, extend, alpha, scale, of
         mixer.label = "Mixer"
         mixer.inputs[0].default_value = pct / 100
         mixer.inputs[1].default_value = (
-            tintcolor[:3] + [1] if tintcolor else
-            shader.inputs['Base Color'].default_value[:]
-        )
+            tint1[:3] + [1] if tint1 else shader.inputs['Base Color'].default_value[:])
         contextWrapper._grid_to_location(1, 2, dst_node=mixer, ref_node=shader)
         img_wrap = contextWrapper.base_color_texture
-        links.new(img_wrap.node_image.outputs['Color'], mixer.inputs[2])
         links.new(mixer.outputs['Color'], shader.inputs['Base Color'])
+        if tint2 is not None:
+            img_wrap.colorspace_name = 'Non-Color'
+            mixer.inputs[2].default_value = tint2[:3] + [1]
+            links.new(img_wrap.node_image.outputs['Color'], mixer.inputs[0])
+        else:
+            links.new(img_wrap.node_image.outputs['Color'], mixer.inputs[2])
+    elif mapto == 'ROUGHNESS':
+        img_wrap = contextWrapper.roughness_texture
+    elif mapto == 'METALLIC':
+        shader.location = (300,300)
+        img_wrap = contextWrapper.metallic_texture
     elif mapto == 'SPECULARITY':
+        shader.location = (300,0)
         img_wrap = contextWrapper.specular_tint_texture
     elif mapto == 'ALPHA':
-        shader.location = (0, -300)
+        shader.location = (-300,0)
         img_wrap = contextWrapper.alpha_texture
-    elif mapto == 'METALLIC':
-        shader.location = (300, 300)
-        img_wrap = contextWrapper.metallic_texture
-    elif mapto == 'ROUGHNESS':
-        shader.location = (300, 0)
-        img_wrap = contextWrapper.roughness_texture
+        img_wrap.use_alpha = False
+        links.new(img_wrap.node_image.outputs['Color'], img_wrap.socket_dst)
     elif mapto == 'EMISSION':
-        shader.location = (-300, -600)
+        shader.location = (0,-900)
         img_wrap = contextWrapper.emission_color_texture
     elif mapto == 'NORMAL':
         shader.location = (300, 300)
@@ -310,10 +315,12 @@ def add_texture_to_material(image, contextWrapper, pct, extend, alpha, scale, of
         img_wrap.extension = 'CLIP'
 
     if alpha == 'alpha':
+        own_node = img_wrap.node_image
+        contextWrapper.material.blend_method = 'HASHED'
+        links.new(own_node.outputs['Alpha'], img_wrap.socket_dst)
         for link in links:
             if link.from_node.type == 'TEX_IMAGE' and link.to_node.type == 'MIX_RGB':
                 tex = link.from_node.image.name
-                own_node = img_wrap.node_image
                 own_map = img_wrap.node_mapping
                 if tex == image.name:
                     links.new(link.from_node.outputs['Alpha'], img_wrap.socket_dst)
@@ -323,9 +330,6 @@ def add_texture_to_material(image, contextWrapper, pct, extend, alpha, scale, of
                         if imgs.name[-3:].isdigit():
                             if not imgs.users:
                                 bpy.data.images.remove(imgs)
-                else:
-                    links.new(img_wrap.node_image.outputs['Alpha'], img_wrap.socket_dst)
-        contextWrapper.material.blend_method = 'HASHED'
 
     shader.location = (300, 300)
     contextWrapper._grid_to_location(1, 0, dst_node=contextWrapper.node_out, ref_node=shader)
@@ -518,7 +522,7 @@ def process_next_chunk(context, file, previous_chunk, imported_objects, CONSTRAI
     def read_texture(new_chunk, temp_chunk, name, mapto):
         uscale, vscale, uoffset, voffset, angle = 1.0, 1.0, 0.0, 0.0, 0.0
         contextWrapper.use_nodes = True
-        tintcolor = None
+        tint1 = tint2 = None
         extend = 'wrap'
         alpha = False
         pct = 70
@@ -542,14 +546,8 @@ def process_next_chunk(context, file, previous_chunk, imported_objects, CONSTRAI
                 img = load_image(texture_name, dirname, place_holder=False, recursive=IMAGE_SEARCH, check_existing=True)
                 temp_chunk.bytes_read += read_str_len  # plus one for the null character that gets removed
 
-            elif temp_chunk.ID == MAT_MAP_USCALE:
-                uscale = read_float(temp_chunk)
-            elif temp_chunk.ID == MAT_MAP_VSCALE:
-                vscale = read_float(temp_chunk)
-            elif temp_chunk.ID == MAT_MAP_UOFFSET:
-                uoffset = read_float(temp_chunk)
-            elif temp_chunk.ID == MAT_MAP_VOFFSET:
-                voffset = read_float(temp_chunk)
+            elif temp_chunk.ID == MAT_BUMP_PERCENT:
+                contextWrapper.normalmap_strength = (float(read_short(temp_chunk) / 100))
 
             elif temp_chunk.ID == MAT_MAP_TILING:
                 """Control bit flags, where 0x1 activates decaling, 0x2 activates mirror,
@@ -578,11 +576,20 @@ def process_next_chunk(context, file, previous_chunk, imported_objects, CONSTRAI
                 if tiling & 0x200:
                     tint = 'RGBtint'
 
+            elif temp_chunk.ID == MAT_MAP_USCALE:
+                uscale = read_float(temp_chunk)
+            elif temp_chunk.ID == MAT_MAP_VSCALE:
+                vscale = read_float(temp_chunk)
+            elif temp_chunk.ID == MAT_MAP_UOFFSET:
+                uoffset = read_float(temp_chunk)
+            elif temp_chunk.ID == MAT_MAP_VOFFSET:
+                voffset = read_float(temp_chunk)
             elif temp_chunk.ID == MAT_MAP_ANG:
                 angle = read_float(temp_chunk)
-
             elif temp_chunk.ID == MAT_MAP_COL1:
-                tintcolor = read_byte_color(temp_chunk)
+                tint1 = read_byte_color(temp_chunk)
+            elif temp_chunk.ID == MAT_MAP_COL2:
+                tint2 = read_byte_color(temp_chunk)
 
             skip_to_end(file, temp_chunk)
             new_chunk.bytes_read += temp_chunk.bytes_read
@@ -590,7 +597,7 @@ def process_next_chunk(context, file, previous_chunk, imported_objects, CONSTRAI
         # add the map to the material in the right channel
         if img:
             add_texture_to_material(img, contextWrapper, pct, extend, alpha, (uscale, vscale, 1),
-                                    (uoffset, voffset, 0), angle, tintcolor, mapto)
+                                    (uoffset, voffset, 0), angle, tint1, tint2, mapto)
 
     def apply_constrain(vec):
         convector = mathutils.Vector.Fill(3, (CONSTRAIN * 0.1))
@@ -641,8 +648,6 @@ def process_next_chunk(context, file, previous_chunk, imported_objects, CONSTRAI
         temp_data = file.read(SZ_U_INT * 2)
         track_chunk.bytes_read += SZ_U_INT * 2
         nkeys = read_long(track_chunk)
-        if nkeys == 0:
-            keyframe_data[0] = default_data
         for i in range(nkeys):
             nframe = read_long(track_chunk)
             nflags = read_short(track_chunk)
@@ -657,8 +662,6 @@ def process_next_chunk(context, file, previous_chunk, imported_objects, CONSTRAI
         temp_data = file.read(SZ_U_SHORT * 5)
         track_chunk.bytes_read += SZ_U_SHORT * 5
         nkeys = read_long(track_chunk)
-        if nkeys == 0:
-            keyframe_angle[0] = default_value
         for i in range(nkeys):
             nframe = read_long(track_chunk)
             nflags = read_short(track_chunk)
@@ -815,7 +818,7 @@ def process_next_chunk(context, file, previous_chunk, imported_objects, CONSTRAI
             if contextWorld is None:
                 path, filename = os.path.split(file.name)
                 realname, ext = os.path.splitext(filename)
-                newWorld = bpy.data.worlds.new("Fog: " + realname)
+                contextWorld = bpy.data.worlds.new("Fog: " + realname)
                 context.scene.world = contextWorld
             contextWorld.use_nodes = True
             links = contextWorld.node_tree.links
@@ -1333,7 +1336,7 @@ def process_next_chunk(context, file, previous_chunk, imported_objects, CONSTRAI
 
         elif KEYFRAME and new_chunk.ID == COL_TRACK_TAG and tracking == 'AMBIENT':  # Ambient
             keyframe_data = {}
-            default_data = child.color[:]
+            keyframe_data[0] = child.color[:]
             child.color = read_track_data(new_chunk)[0]
             ambinode.inputs[0].default_value[:3] = child.color
             ambilite.outputs[0].default_value[:3] = child.color
@@ -1347,7 +1350,7 @@ def process_next_chunk(context, file, previous_chunk, imported_objects, CONSTRAI
 
         elif KEYFRAME and new_chunk.ID == COL_TRACK_TAG and tracking == 'LIGHT':  # Color
             keyframe_data = {}
-            default_data = child.data.color[:]
+            keyframe_data[0] = child.data.color[:]
             child.data.color = read_track_data(new_chunk)[0]
             for keydata in keyframe_data.items():
                 child.data.color = keydata[1]
@@ -1356,7 +1359,7 @@ def process_next_chunk(context, file, previous_chunk, imported_objects, CONSTRAI
 
         elif KEYFRAME and new_chunk.ID == POS_TRACK_TAG and tracktype == 'OBJECT':  # Translation
             keyframe_data = {}
-            default_data = child.location[:]
+            keyframe_data[0] = child.location[:]
             child.location = read_track_data(new_chunk)[0]
             if child.type in {'LIGHT', 'CAMERA'}:
                 trackposition[0] = child.location
@@ -1385,6 +1388,7 @@ def process_next_chunk(context, file, previous_chunk, imported_objects, CONSTRAI
         elif KEYFRAME and new_chunk.ID == POS_TRACK_TAG and tracktype == 'TARGET':  # Target position
             keyframe_data = {}
             location = child.location
+            keyframe_data[0] = trackposition[0]
             target = mathutils.Vector(read_track_data(new_chunk)[0])
             direction = calc_target(location, target)
             child.rotation_euler.x = direction[0]
@@ -1408,12 +1412,11 @@ def process_next_chunk(context, file, previous_chunk, imported_objects, CONSTRAI
 
         elif KEYFRAME and new_chunk.ID == ROT_TRACK_TAG and tracktype == 'OBJECT':  # Rotation
             keyframe_rotation = {}
+            keyframe_rotation[0] = child.rotation_axis_angle[:]
             tflags = read_short(new_chunk)
             temp_data = file.read(SZ_U_INT * 2)
             new_chunk.bytes_read += SZ_U_INT * 2
             nkeys = read_long(new_chunk)
-            if nkeys == 0:
-                keyframe_rotation[0] = child.rotation_axis_angle[:]
             if tflags & 0x8:  # Flag 0x8 locks X axis
                 child.lock_rotation[0] = True
             if tflags & 0x10:  # Flag 0x10 locks Y axis
@@ -1446,7 +1449,7 @@ def process_next_chunk(context, file, previous_chunk, imported_objects, CONSTRAI
 
         elif KEYFRAME and new_chunk.ID == SCL_TRACK_TAG and tracktype == 'OBJECT':  # Scale
             keyframe_data = {}
-            default_data = child.scale[:]
+            keyframe_data[0] = child.scale[:]
             child.scale = read_track_data(new_chunk)[0]
             if contextTrack_flag & 0x8:  # Flag 0x8 locks X axis
                 child.lock_scale[0] = True
@@ -1466,7 +1469,7 @@ def process_next_chunk(context, file, previous_chunk, imported_objects, CONSTRAI
 
         elif KEYFRAME and new_chunk.ID == ROLL_TRACK_TAG and tracktype == 'OBJECT':  # Roll angle
             keyframe_angle = {}
-            default_value = child.rotation_euler.y
+            keyframe_angle[0] = child.rotation_euler.y
             child.rotation_euler.y = read_track_angle(new_chunk)[0]
             for keydata in keyframe_angle.items():
                 child.rotation_euler.y = keydata[1]
@@ -1476,7 +1479,7 @@ def process_next_chunk(context, file, previous_chunk, imported_objects, CONSTRAI
 
         elif KEYFRAME and new_chunk.ID == FOV_TRACK_TAG and tracking == 'CAMERA':  # Field of view
             keyframe_angle = {}
-            default_value = child.data.angle
+            keyframe_angle[0] = child.data.angle
             child.data.angle = read_track_angle(new_chunk)[0]
             for keydata in keyframe_angle.items():
                 child.data.lens = (child.data.sensor_width / 2) / math.tan(keydata[1] / 2)
@@ -1485,7 +1488,7 @@ def process_next_chunk(context, file, previous_chunk, imported_objects, CONSTRAI
         elif KEYFRAME and new_chunk.ID == HOTSPOT_TRACK_TAG and tracking == 'LIGHT' and spotting == 'SPOT':  # Hotspot
             keyframe_angle = {}
             cone_angle = math.degrees(child.data.spot_size)
-            default_value = cone_angle-(child.data.spot_blend * math.floor(cone_angle))
+            keyframe_angle[0] = cone_angle-(child.data.spot_blend * math.floor(cone_angle))
             hot_spot = math.degrees(read_track_angle(new_chunk)[0])
             child.data.spot_blend = 1.0 - (hot_spot / cone_angle)
             for keydata in keyframe_angle.items():
@@ -1494,7 +1497,7 @@ def process_next_chunk(context, file, previous_chunk, imported_objects, CONSTRAI
 
         elif KEYFRAME and new_chunk.ID == FALLOFF_TRACK_TAG and tracking == 'LIGHT' and spotting == 'SPOT':  # Falloff
             keyframe_angle = {}
-            default_value = math.degrees(child.data.spot_size)
+            keyframe_angle[0] = math.degrees(child.data.spot_size)
             child.data.spot_size = read_track_angle(new_chunk)[0]
             for keydata in keyframe_angle.items():
                 child.data.spot_size = keydata[1]
