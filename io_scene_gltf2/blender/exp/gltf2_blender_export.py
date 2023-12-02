@@ -2,6 +2,8 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import os
+import subprocess
 import time
 
 import bpy
@@ -15,6 +17,7 @@ from ...io.exp.gltf2_io_user_extensions import export_user_extensions
 from ..com import gltf2_blender_json
 from . import gltf2_blender_gather
 from .gltf2_blender_gltf2_exporter import GlTF2Exporter
+from .gltf2_blender_gltf2_exporter import fix_json
 
 
 def save(context, export_settings):
@@ -58,7 +61,22 @@ def __export(export_settings):
     exporter.traverse_extensions()
 
     # now that addons possibly add some fields in json, we can fix in needed
-    json = __fix_json(exporter.glTF.to_dict())
+    json = fix_json(exporter.glTF.to_dict())
+
+    # Convert additional data if needed
+    if export_settings['gltf_unused_textures'] is True:
+        additional_json_textures = fix_json([i.to_dict() for i in exporter.additional_data.additional_textures])
+
+        # Now that we have the final json, we can add the additional data
+        # We can not do that for all people, because we don't want this extra to become "a standard"
+        # So let's use the "extras" field filled by a user extension
+
+        export_user_extensions('gather_gltf_additional_textures_hook', export_settings, json, additional_json_textures)
+
+        # if len(additional_json_textures) > 0:
+        #     if json.get('extras') is None:
+        #         json['extras'] = {}
+        #     json['extras']['additionalTextures'] = additional_json_textures
 
     return json, buffer
 
@@ -79,6 +97,8 @@ def __gather_gltf(exporter, export_settings):
     for animation in animations:
         exporter.add_animation(animation)
     exporter.traverse_unused_skins(unused_skins)
+    exporter.traverse_additional_textures()
+    exporter.traverse_additional_images()
 
 
 def __create_buffer(exporter, export_settings):
@@ -91,43 +111,70 @@ def __create_buffer(exporter, export_settings):
 
     return buffer
 
+def __postprocess_with_gltfpack(export_settings):
 
-def __fix_json(obj):
-    # TODO: move to custom JSON encoder
-    fixed = obj
-    if isinstance(obj, dict):
-        fixed = {}
-        for key, value in obj.items():
-            if key == 'extras' and value is not None:
-                fixed[key] = value
-                continue
-            if not __should_include_json_value(key, value):
-                continue
-            fixed[key] = __fix_json(value)
-    elif isinstance(obj, list):
-        fixed = []
-        for value in obj:
-            fixed.append(__fix_json(value))
-    elif isinstance(obj, float):
-        # force floats to int, if they are integers (prevent INTEGER_WRITTEN_AS_FLOAT validator warnings)
-        if int(obj) == obj:
-            return int(obj)
-    return fixed
+    gltfpack_binary_file_path = bpy.context.preferences.addons['io_scene_gltf2'].preferences.gltfpack_path_ui
 
+    gltf_file_path = export_settings['gltf_filepath']
+    gltf_file_base = os.path.splitext(os.path.basename(gltf_file_path))[0]
+    gltf_file_extension = os.path.splitext(os.path.basename(gltf_file_path))[1]
+    gltf_file_directory = os.path.dirname(gltf_file_path)
+    gltf_output_file_directory = os.path.join(gltf_file_directory, "gltfpacked")
+    if (os.path.exists(gltf_output_file_directory) is False):
+        os.makedirs(gltf_output_file_directory)
 
-def __should_include_json_value(key, value):
-    allowed_empty_collections = ["KHR_materials_unlit"]
+    gltf_input_file_path = gltf_file_path
+    gltf_output_file_path = os.path.join(gltf_output_file_directory, gltf_file_base + gltf_file_extension)
 
-    if value is None:
-        return False
-    elif __is_empty_collection(value) and key not in allowed_empty_collections:
-        return False
-    return True
+    options = []
 
+    if (export_settings['gltf_gltfpack_tc']):
+        options.append("-tc")
 
-def __is_empty_collection(value):
-    return (isinstance(value, dict) or isinstance(value, list)) and len(value) == 0
+        if (export_settings['gltf_gltfpack_tq']):
+            options.append("-tq")
+            options.append(f"{export_settings['gltf_gltfpack_tq']}")
 
+    if (export_settings['gltf_gltfpack_si'] != 1.0):
+        options.append("-si")
+        options.append(f"{export_settings['gltf_gltfpack_si']}")
+
+    if (export_settings['gltf_gltfpack_sa']):
+        options.append("-sa")
+
+    if (export_settings['gltf_gltfpack_slb']):
+        options.append("-slb")
+
+    if (export_settings['gltf_gltfpack_noq']):
+        options.append("-noq")
+    else:
+        options.append("-vp")
+        options.append(f"{export_settings['gltf_gltfpack_vp']}")
+        options.append("-vt")
+        options.append(f"{export_settings['gltf_gltfpack_vt']}")
+        options.append("-vn")
+        options.append(f"{export_settings['gltf_gltfpack_vn']}")
+        options.append("-vc")
+        options.append(f"{export_settings['gltf_gltfpack_vc']}")
+
+        match export_settings['gltf_gltfpack_vpi']:
+            case "Integer":
+                options.append("-vpi")
+            case "Normalized":
+                options.append("-vpn")
+            case "Floating-point":
+                options.append("-vpf")
+
+    parameters = []
+    parameters.append("-i")
+    parameters.append(gltf_input_file_path)
+    parameters.append("-o")
+    parameters.append(gltf_output_file_path)
+
+    try:
+        subprocess.run([gltfpack_binary_file_path] + options + parameters, check=True)
+    except subprocess.CalledProcessError as e:
+        print_console('ERROR', "Calling gltfpack was not successful")
 
 def __write_file(json, buffer, export_settings):
     try:
@@ -136,6 +183,9 @@ def __write_file(json, buffer, export_settings):
             export_settings,
             gltf2_blender_json.BlenderJSONEncoder,
             buffer)
+        if (export_settings['gltf_use_gltfpack'] == True):
+            __postprocess_with_gltfpack(export_settings)
+
     except AssertionError as e:
         _, _, tb = sys.exc_info()
         traceback.print_tb(tb)  # Fixed format
