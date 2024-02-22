@@ -1162,11 +1162,13 @@ def fbx_data_mesh_elements(root, me_obj, scene_data, done_meshes):
                 # All faces are smooth shaded, so we can get normals from the vertices.
                 normal_source = me.vertex_normals
                 normal_mapping = b"ByVertice"
-            case 'FACE':
-                # Either all faces or all edges are sharp, so we can get normals from the faces.
-                normal_source = me.polygon_normals
-                normal_mapping = b"ByPolygon"
-            case 'CORNER':
+            # External software support for b"ByPolygon" normals does not seem to be as widely available as the other
+            # mappings. See blender/blender#117470.
+            # case 'FACE':
+            #     # Either all faces or all edges are sharp, so we can get normals from the faces.
+            #     normal_source = me.polygon_normals
+            #     normal_mapping = b"ByPolygon"
+            case 'CORNER' | 'FACE':
                 # We have a mix of sharp/smooth edges/faces or custom split normals, so need to get normals from
                 # corners.
                 normal_source = me.corner_normals
@@ -3108,9 +3110,9 @@ def fbx_header_elements(root, scene_data, time=None):
     app_name = "Blender (stable FBX IO)"
     app_ver = bpy.app.version_string
 
-    import addon_utils
-    import sys
-    addon_ver = addon_utils.module_bl_info(sys.modules[__package__])['version']
+    from . import bl_info
+    addon_ver = bl_info["version"]
+    del bl_info
 
     # ##### Start of FBXHeaderExtension element.
     header_ext = elem_empty(root, b"FBXHeaderExtension")
