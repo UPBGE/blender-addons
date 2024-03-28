@@ -711,9 +711,9 @@ def make_material_chunk(material, image):
         material_chunk.add_subchunk(make_percent_subchunk(MATSHIN2, wrap.specular))
         material_chunk.add_subchunk(make_percent_subchunk(MATSHIN3, wrap.metallic))
         material_chunk.add_subchunk(make_percent_subchunk(MATTRANS, 1 - wrap.alpha))
-        material_chunk.add_subchunk(make_percent_subchunk(MATXPFALL, wrap.transmission))
-        material_chunk.add_subchunk(make_percent_subchunk(MATSELFILPCT, wrap.emission_strength))
         if wrap.node_principled_bsdf is not None:
+            material_chunk.add_subchunk(make_percent_subchunk(MATXPFALL, wrap.transmission))
+            material_chunk.add_subchunk(make_percent_subchunk(MATSELFILPCT, wrap.emission_strength))
             material_chunk.add_subchunk(make_percent_subchunk(MATREFBLUR, wrap.node_principled_bsdf.inputs['Coat Weight'].default_value))
         material_chunk.add_subchunk(shading)
 
@@ -1563,7 +1563,7 @@ def make_ambient_node(world):
 ##########
 
 def save(operator, context, filepath="", scale_factor=1.0, use_scene_unit=False, use_selection=False,
-         object_filter=None, use_hierarchy=False, use_keyframes=False, global_matrix=None, use_cursor=False):
+         object_filter=None, use_keyframes=True, use_hierarchy=False, global_matrix=None, use_cursor=False):
     """Save the Blender scene to a 3ds file."""
 
     # Time the export
